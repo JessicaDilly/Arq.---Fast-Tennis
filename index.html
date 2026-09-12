@@ -717,21 +717,18 @@ const google = { script: { run: (function(){
     editarProjeto:["dadosJson","token"],
     decidirAprovacao:["refStr","status","observacao","token"]
   };
-  const LEITURA={getDados:1}; // GET; o resto é POST (escrita)
   function fazer(acao,args){
     const runner=this;
     const nomes=PARAMS[acao]||[];
     const corpo={api:acao};
     for(let i=0;i<nomes.length;i++){ corpo[nomes[i]] = (nomes[i]==="token") ? TOKEN : args[i]; }
-    const opt = LEITURA[acao]
-      ? {method:"GET"}
-      : {method:"POST", body:JSON.stringify(corpo)};
-    let url=API_URL;
-    if(LEITURA[acao]){ // GET manda os params na query
-      const q=Object.keys(corpo).map(k=>encodeURIComponent(k)+"="+encodeURIComponent(corpo[k])).join("&");
-      url=API_URL+"?"+q;
-    }
-    fetch(url,opt)
+    /* TUDO via POST com Content-Type text/plain = requisição SIMPLES: o navegador
+       não faz preflight e não exige Access-Control-Allow-Origin no GET. É o único
+       jeito de o Apps Script (que não manda header CORS) responder a fetch de outro site.
+       redirect:follow porque o /exec responde 302 p/ googleusercontent. */
+    const opt = {method:"POST", body:JSON.stringify(corpo), redirect:"follow",
+                 headers:{"Content-Type":"text/plain;charset=utf-8"}};
+    fetch(API_URL,opt)
       .then(r=>r.text())
       .then(txt=>{
         let env; try{ env=JSON.parse(txt); }catch(e){ throw new Error("Resposta inválida do servidor"); }

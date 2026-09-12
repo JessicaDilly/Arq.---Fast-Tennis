@@ -2211,7 +2211,7 @@ document.getElementById("calNext").addEventListener("click",()=>{calRef.m++;if(c
 document.getElementById("fClear").addEventListener("click",()=>{["fAno","fMes","fFase","fPad"].forEach(id=>document.getElementById(id).value="");termoSel="";render();});
 document.getElementById("refresh").addEventListener("click",carregar);
 document.getElementById("btPdf").addEventListener("click",()=>window.print());
-if(!window._papelAplicado){ aplicarPapel(); window._papelAplicado=true; }
+/* aplicarPapel NÃO roda aqui: só no receber(), quando o _USER real já chegou */
 // filtros se recolhem ao rolar para baixo, reaparecem ao subir.
 // Trava temporal + histerese: sem ela, esconder muda a altura da página,
 // o que muda o scroll, o que dispara o "mostrar" — e a tela treme.

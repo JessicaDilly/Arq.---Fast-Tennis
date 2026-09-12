@@ -448,13 +448,13 @@ tr:last-child td{border-bottom:0}
 <div class="topbar">
 <div class="nav" id="nav">
   <button data-tab="geral" class="on">Visão geral</button>
-  <button data-tab="equipe">Equipe</button>
-  <button data-tab="prazos">Prazos &amp; Metas</button>
-  <button data-tab="plan">Planejamento</button>
-  <button data-tab="tarefas">Tarefas</button>
   <button data-tab="projetos">Projetos</button>
-  <button data-tab="qual">Qualidade</button>
+  <button data-tab="tarefas">Tarefas</button>
+  <button data-tab="plan">Planejamento</button>
+  <button data-tab="prazos">Prazos &amp; Metas</button>
+  <button data-tab="equipe">Equipe</button>
   <button data-tab="aprov">Aprovação de Projetos</button>
+  <button data-tab="qual">Qualidade</button>
 </div>
 <div class="filters">
   <div class="f"><label>Ano</label><select id="fAno"><option value="">Todos</option></select></div>
@@ -593,11 +593,19 @@ tr:last-child td{border-bottom:0}
       <select id="tkEtapa" class="tksel"><option value="">Todas as etapas</option></select>
       <label class="tkchk"><input type="checkbox" id="tkPend"> Só pendentes</label>
       <select id="tkOrd" class="tksel" title="Ordenar por">
+        <option value="ini">Ordenar: início (mais antigo)</option>
+        <option value="ini-d">Ordenar: início (mais recente)</option>
         <option value="prazo">Ordenar: prazo (mais próximo)</option>
         <option value="prazo-d">Ordenar: prazo (mais distante)</option>
         <option value="projeto">Ordenar: projeto (A→Z)</option>
         <option value="status">Ordenar: status</option>
         <option value="resp">Ordenar: responsável</option>
+      </select>
+      <select id="tkQtd" class="tksel" title="Itens por página">
+        <option value="25">25 por página</option>
+        <option value="30">30 por página</option>
+        <option value="50">50 por página</option>
+        <option value="100">100 por página</option>
       </select>
       <span id="tkCount" class="tkcount"></span>
     </div>
@@ -623,11 +631,19 @@ tr:last-child td{border-bottom:0}
       <select id="pjPad" class="tksel"><option value="">Todos os padrões</option></select>
       <label class="tkchk"><input type="checkbox" id="pjAtras"> Só atrasados</label>
       <select id="pjOrd" class="tksel" title="Ordenar por">
+        <option value="ini">Ordenar: início (mais antigo)</option>
+        <option value="ini-d">Ordenar: início (mais recente)</option>
         <option value="id">Ordenar: ID do projeto</option>
         <option value="nome">Ordenar: nome (A→Z)</option>
         <option value="prog">Ordenar: progresso (maior)</option>
         <option value="prog-a">Ordenar: progresso (menor)</option>
         <option value="fase">Ordenar: fase</option>
+      </select>
+      <select id="pjQtd" class="tksel" title="Itens por página">
+        <option value="30">30 por tela</option>
+        <option value="50">50 por tela</option>
+        <option value="100">100 por tela</option>
+        <option value="9999">Mostrar todos</option>
       </select>
       <span id="pjCount" class="tkcount"></span>
       <div class="pjtoggle">
@@ -637,6 +653,7 @@ tr:last-child td{border-bottom:0}
     </div>
     <div id="pjLista"></div>
     <div id="pjVazio" class="tkvazio" style="display:none">Nenhum projeto encontrado com esses filtros.</div>
+    <div class="tkpag" id="pjPag"></div>
   </section>
 
   <!-- ficha expansível do projeto (modal centralizado) -->
@@ -1141,7 +1158,7 @@ function pf(r,f){const c=COL.PROJETOS||{};
 
 /* ============ RENDER PRINCIPAL ============ */
 /* ============ MENU PROJETOS ============ */
-var PJ = { view: (function(){ try{ return localStorage.getItem("pjView")||"lista"; }catch(e){ return "lista"; } })() };
+var PJ = { pag:1, view: (function(){ try{ return localStorage.getItem("pjView")||"lista"; }catch(e){ return "lista"; } })() };
 
 function pjFaseClasse_(fase){
   var k=KEY(fase);
@@ -1192,10 +1209,13 @@ function pjFiltrar(){
     out.push(r);
   });
   /* ordenação escolhida */
-  var ord=(document.getElementById("pjOrd")||{}).value||"id";
+  var ord=(document.getElementById("pjOrd")||{}).value||"ini";
   var FASEORD=ORDEM_ETAPAS||{};
+  function tini(r){ var d=pdate(G(r,cp.iniPlan)); return d?d.getTime():8.64e15; }
   out.sort(function(a,b){
     var ia=txt(G(a,cp.id)), ib=txt(G(b,cp.id));
+    if(ord==="ini"){ var da=tini(a),db=tini(b); return da!==db? da-db : ia.localeCompare(ib,"pt",{numeric:true}); }
+    if(ord==="ini-d"){ var da2=tini(a),db2=tini(b); return da2!==db2? db2-da2 : ia.localeCompare(ib,"pt",{numeric:true}); }
     if(ord==="nome"){ return (txt(G(a,cp.nome))||"").localeCompare(txt(G(b,cp.nome))||"","pt"); }
     if(ord==="prog"||ord==="prog-a"){
       var pa=pjProgresso_(ia).pct, pb=pjProgresso_(ib).pct;
@@ -1217,9 +1237,15 @@ function renderProjetos(){
   if(!document.getElementById("pjLista")) return;   // aba pode não existir (papel)
   pjMontarFiltros();
   var cp=COL.PROJETOS||{};
-  var lista=pjFiltrar();
-  document.getElementById("pjCount").textContent = lista.length+" projeto"+(lista.length!==1?"s":"");
-  document.getElementById("pjVazio").style.display = lista.length? "none":"block";
+  var listaFull=pjFiltrar();
+  var total=listaFull.length;
+  var tam=+((document.getElementById("pjQtd")||{}).value)||30;
+  var npag=Math.max(1,Math.ceil(total/tam));
+  if(PJ.pag>npag) PJ.pag=npag;
+  var ini=(PJ.pag-1)*tam;
+  var lista=listaFull.slice(ini, ini+tam);
+  document.getElementById("pjCount").textContent = total+" projeto"+(total!==1?"s":"");
+  document.getElementById("pjVazio").style.display = total? "none":"block";
   document.getElementById("pjVLista").classList.toggle("on", PJ.view==="lista");
   document.getElementById("pjVCard").classList.toggle("on", PJ.view==="card");
 
@@ -1258,6 +1284,18 @@ function renderProjetos(){
   [].forEach.call(alvo.querySelectorAll("[data-pj]"),function(el){
     el.onclick=function(){ pjAbrirFicha(decodeURIComponent(el.getAttribute("data-pj"))); };
   });
+
+  /* paginação */
+  var pag=document.getElementById("pjPag");
+  if(npag<=1){ pag.innerHTML=""; }
+  else {
+    pag.innerHTML='<button id="pjPrev"'+(PJ.pag<=1?" disabled":"")+'>‹ Anterior</button>'+
+      '<span class="cur">Página '+PJ.pag+' de '+npag+'</span>'+
+      '<button id="pjNext"'+(PJ.pag>=npag?" disabled":"")+'>Próxima ›</button>';
+    var p=document.getElementById("pjPrev"), n=document.getElementById("pjNext");
+    if(p) p.onclick=function(){ if(PJ.pag>1){PJ.pag--;renderProjetos();window.scrollTo({top:0,behavior:"smooth"});} };
+    if(n) n.onclick=function(){ if(PJ.pag<npag){PJ.pag++;renderProjetos();window.scrollTo({top:0,behavior:"smooth"});} };
+  }
 }
 
 /* ficha expansível do projeto */
@@ -1402,17 +1440,24 @@ function tkFiltrar(){
       if(alvo.indexOf(busca)<0) return;
     }
     out.push({pid:pid,proj:proj,etapa:etapa,tarefa:tarefa,resp:resp,status:st,
-              prazo:pdate(G(r,ct.fimPlan)), fimReal:pdate(G(r,ct.fimReal))});
+              ini:pdate(G(r,ct.iniPlan)), prazo:pdate(G(r,ct.fimPlan)), fimReal:pdate(G(r,ct.fimReal))});
   });
   /* ordenação escolhida no select "Ordenar por" */
-  var ord=(document.getElementById("tkOrd")||{}).value||"prazo";
+  var ord=(document.getElementById("tkOrd")||{}).value||"ini";
   var STORD={ "Não iniciado":0,"Em andamento":1,"Atrasado":2,"Concluído":3 };
   function porPrazo(a,b,dir){
     var ta=a.prazo?a.prazo.getTime():8.64e15, tb=b.prazo?b.prazo.getTime():8.64e15;
     if(ta!==tb) return (ta-tb)*dir;
     return a.pid<b.pid?-1:a.pid>b.pid?1:0;
   }
+  function porIni(a,b,dir){
+    var ta=a.ini?a.ini.getTime():8.64e15, tb=b.ini?b.ini.getTime():8.64e15;
+    if(ta!==tb) return (ta-tb)*dir;
+    return a.pid<b.pid?-1:a.pid>b.pid?1:0;
+  }
   out.sort(function(a,b){
+    if(ord==="ini")     return porIni(a,b,1);
+    if(ord==="ini-d")   return porIni(a,b,-1);
     if(ord==="prazo")   return porPrazo(a,b,1);
     if(ord==="prazo-d") return porPrazo(a,b,-1);
     if(ord==="projeto"){ var c=(a.proj||"").localeCompare(b.proj||"","pt"); return c||porPrazo(a,b,1); }
@@ -1429,7 +1474,8 @@ function renderTarefas(){
   tkMontarFiltros();
   var lista=tkFiltrar();
   var total=lista.length;
-  var tam=TK.tam, npag=Math.max(1,Math.ceil(total/tam));
+  var tam=+((document.getElementById("tkQtd")||{}).value)||TK.tam;
+  var npag=Math.max(1,Math.ceil(total/tam));
   if(TK.pag>npag) TK.pag=npag;
   var ini=(TK.pag-1)*tam, fim=Math.min(ini+tam,total);
   var pagina=lista.slice(ini,fim);
@@ -2731,16 +2777,16 @@ document.getElementById("calNext").addEventListener("click",()=>{calRef.m++;if(c
 ["fAno","fMes","fFase","fPad"].forEach(id=>document.getElementById(id).addEventListener("change",render));
 document.getElementById("fClear").addEventListener("click",()=>{["fAno","fMes","fFase","fPad"].forEach(id=>document.getElementById(id).value="");termoSel="";render();});
 /* filtros do Menu Tarefas: cada mudança volta p/ página 1 e re-renderiza só a tabela */
-["tkBusca","tkStatus","tkResp","tkEtapa","tkPend","tkOrd"].forEach(function(id){
+["tkBusca","tkStatus","tkResp","tkEtapa","tkPend","tkOrd","tkQtd"].forEach(function(id){
   var el=document.getElementById(id); if(!el) return;
   var ev=(id==="tkBusca")?"input":"change";
   el.addEventListener(ev,function(){ TK.pag=1; renderTarefas(); });
 });
 /* filtros e toggle do Menu Projetos */
-["pjBusca","pjFase","pjPad","pjAtras","pjOrd"].forEach(function(id){
+["pjBusca","pjFase","pjPad","pjAtras","pjOrd","pjQtd"].forEach(function(id){
   var el=document.getElementById(id); if(!el) return;
   var ev=(id==="pjBusca")?"input":"change";
-  el.addEventListener(ev,renderProjetos);
+  el.addEventListener(ev,function(){ PJ.pag=1; renderProjetos(); });
 });
 (function(){
   var vl=document.getElementById("pjVLista"), vc=document.getElementById("pjVCard");

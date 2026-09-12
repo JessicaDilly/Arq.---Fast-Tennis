@@ -153,6 +153,32 @@ tr:last-child td{border-bottom:0}
 .nav button:hover{color:var(--ink)}
 .nav button.on{color:var(--accent);border-bottom-color:var(--accent)}
 .tab{display:none}.tab.on{display:block}
+/* ===== Menu Tarefas ===== */
+.tkbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:14px}
+.tkin{flex:1;min-width:220px;padding:9px 12px;border:1px solid var(--line2);border-radius:8px;font-family:inherit;font-size:13px;color:var(--ink);background:#fff}
+.tkin:focus{outline:none;border-color:var(--accent2)}
+.tksel{padding:9px 10px;border:1px solid var(--line2);border-radius:8px;font-family:inherit;font-size:13px;color:var(--ink);background:#fff;cursor:pointer}
+.tkchk{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--muted);cursor:pointer;white-space:nowrap}
+.tkcount{font-size:12px;color:var(--muted);margin-left:auto;white-space:nowrap}
+.tkwrap{border:1px solid var(--line2);border-radius:10px;overflow:hidden;background:#fff}
+.tktab{width:100%;border-collapse:collapse;font-size:13px}
+.tktab thead th{text-align:left;padding:11px 12px;background:var(--line);color:var(--muted);font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;white-space:nowrap}
+.tktab tbody td{padding:10px 12px;border-top:1px solid var(--line2);vertical-align:middle}
+.tktab tbody tr:hover{background:var(--line)}
+.tktab .tkacts{text-align:right;white-space:nowrap}
+.tkpid{font-weight:700;color:var(--accent)}
+.tkbtn{border:1px solid var(--line2);background:#fff;border-radius:6px;padding:5px 10px;font-size:12px;font-family:inherit;cursor:pointer;color:var(--ink);margin-left:4px}
+.tkbtn:hover{border-color:var(--accent2);color:var(--accent)}
+.tkbtn.ok{border-color:var(--green);color:var(--green)}
+.tkst{display:inline-block;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap}
+.tkst.pend{background:#eef1f3;color:#5b6770}.tkst.and{background:#fdf1dc;color:#9a6a12}
+.tkst.ok{background:#e3f4ea;color:#1f7a44}.tkst.atr{background:#fbe6e4;color:#b3382f}
+.tkvazio{padding:30px;text-align:center;color:var(--muted);font-size:13px}
+.tkpag{display:flex;gap:6px;justify-content:center;align-items:center;margin-top:14px;font-size:13px}
+.tkpag button{border:1px solid var(--line2);background:#fff;border-radius:7px;padding:6px 12px;font-family:inherit;font-size:13px;cursor:pointer;color:var(--ink)}
+.tkpag button:disabled{opacity:.4;cursor:default}
+.tkpag .cur{color:var(--muted)}
+@media(max-width:760px){.tktab thead{display:none}.tktab tbody td{display:block;border:0;padding:4px 12px}.tktab tbody tr{display:block;border-top:1px solid var(--line2);padding:8px 0}.tktab .tkacts{text-align:left;padding-top:8px}}
 /* ---- alertas ---- */
 .alerts{display:flex;flex-direction:column;gap:8px;margin-bottom:18px}
 .alert{display:flex;align-items:flex-start;gap:10px;padding:11px 14px;border-radius:10px;font-size:13px;line-height:1.45;border:1px solid}
@@ -373,6 +399,7 @@ tr:last-child td{border-bottom:0}
   <button data-tab="equipe">Equipe</button>
   <button data-tab="prazos">Prazos &amp; Metas</button>
   <button data-tab="plan">Planejamento</button>
+  <button data-tab="tarefas">Tarefas</button>
   <button data-tab="qual">Qualidade</button>
   <button data-tab="aprov">Aprovação de Projetos</button>
 </div>
@@ -499,6 +526,34 @@ tr:last-child td{border-bottom:0}
   </section>
 
   <!-- ============ QUALIDADE ============ -->
+  <!-- ============ TAREFAS ============ -->
+  <section class="tab" id="tab-tarefas">
+    <div class="section-title">Todas as tarefas</div>
+    <div class="tkbar">
+      <input id="tkBusca" class="tkin" placeholder="Buscar por projeto, tarefa, ID…" autocomplete="off">
+      <select id="tkStatus" class="tksel">
+        <option value="">Todos os status</option>
+        <option>Não iniciado</option><option>Em andamento</option>
+        <option>Concluído</option><option>Atrasado</option>
+      </select>
+      <select id="tkResp" class="tksel"><option value="">Todos os responsáveis</option></select>
+      <select id="tkEtapa" class="tksel"><option value="">Todas as etapas</option></select>
+      <label class="tkchk"><input type="checkbox" id="tkPend"> Só pendentes</label>
+      <span id="tkCount" class="tkcount"></span>
+    </div>
+    <div class="tkwrap">
+      <table class="tktab" id="tkTab">
+        <thead><tr>
+          <th>Projeto</th><th>Etapa</th><th>Tarefa</th><th>Responsável</th>
+          <th>Prazo</th><th>Status</th><th class="tkacts">Ações</th>
+        </tr></thead>
+        <tbody id="tkBody"></tbody>
+      </table>
+      <div id="tkVazio" class="tkvazio" style="display:none">Nenhuma tarefa encontrada com esses filtros.</div>
+    </div>
+    <div class="tkpag" id="tkPag"></div>
+  </section>
+
   <section class="tab" id="tab-qual">
     <div class="section-title">Erros</div>
     <div class="cards" id="cardsErro"></div>
@@ -994,6 +1049,164 @@ function pf(r,f){const c=COL.PROJETOS||{};
   return noPeriodo(r,f);}
 
 /* ============ RENDER PRINCIPAL ============ */
+/* ============ MENU TAREFAS ============ */
+var TK = { pag:1, tam:25, ordCol:"prazo", ordDir:1 };
+
+function statusClasse_(s){
+  var k=KEY(s);
+  if(k.indexOf("CONCLU")>=0) return "ok";
+  if(k.indexOf("ANDAMENTO")>=0) return "and";
+  if(k.indexOf("ATRAS")>=0) return "atr";
+  return "pend";
+}
+
+/* preenche os selects de responsável e etapa uma vez */
+function tkMontarFiltros(){
+  var ct=COL.TAREFAS||{};
+  var resps={}, etapas={};
+  (DADOS.TAREFAS||[]).forEach(function(r){
+    respsDe(G(r,ct.resp)).forEach(function(x){ if(x) resps[x]=1; });
+    var e=txt(G(r,ct.etapa)); if(e) etapas[KEY(e)]=e;
+  });
+  var selR=document.getElementById("tkResp");
+  var selE=document.getElementById("tkEtapa");
+  if(selR && selR.options.length<=1){
+    Object.keys(resps).sort().forEach(function(k){
+      var o=document.createElement("option"); o.value=k; o.textContent=cap(k); selR.appendChild(o);
+    });
+  }
+  if(selE && selE.options.length<=1){
+    Object.keys(etapas).sort().forEach(function(k){
+      var o=document.createElement("option"); o.value=k; o.textContent=cap(etapas[k]); selE.appendChild(o);
+    });
+  }
+}
+
+/* aplica os filtros e devolve a lista de tarefas (objetos) */
+function tkFiltrar(){
+  var ct=COL.TAREFAS||{};
+  var busca=KEY(document.getElementById("tkBusca").value||"");
+  var fst=document.getElementById("tkStatus").value||"";
+  var fresp=document.getElementById("tkResp").value||"";
+  var fet=document.getElementById("tkEtapa").value||"";
+  var soPend=document.getElementById("tkPend").checked;
+
+  var out=[];
+  (DADOS.TAREFAS||[]).forEach(function(r){
+    var pid=txt(G(r,ct.idProj)), proj=txt(G(r,ct.proj)), etapa=txt(G(r,ct.etapa)),
+        tarefa=txt(G(r,ct.tarefa)), resp=txt(G(r,ct.resp)), st=txt(G(r,ct.status));
+    if(!pid && !tarefa) return;
+    if(fst && KEY(st)!==KEY(fst)) return;
+    if(soPend && KEY(st).indexOf("CONCLU")>=0) return;
+    if(fresp && respsDe(resp).indexOf(fresp)<0) return;
+    if(fet && KEY(etapa)!==fet) return;
+    if(busca){
+      var alvo=KEY(pid+" "+proj+" "+tarefa+" "+etapa);
+      if(alvo.indexOf(busca)<0) return;
+    }
+    out.push({pid:pid,proj:proj,etapa:etapa,tarefa:tarefa,resp:resp,status:st,
+              prazo:pdate(G(r,ct.fimPlan)), fimReal:pdate(G(r,ct.fimReal))});
+  });
+  /* ordena por prazo (nulos no fim), depois por ID */
+  out.sort(function(a,b){
+    var ta=a.prazo?a.prazo.getTime():8.64e15, tb=b.prazo?b.prazo.getTime():8.64e15;
+    if(ta!==tb) return ta-tb;
+    return a.pid<b.pid?-1:a.pid>b.pid?1:0;
+  });
+  return out;
+}
+
+function renderTarefas(){
+  if(!document.getElementById("tkBody")) return;   // aba pode não existir (papel)
+  tkMontarFiltros();
+  var lista=tkFiltrar();
+  var total=lista.length;
+  var tam=TK.tam, npag=Math.max(1,Math.ceil(total/tam));
+  if(TK.pag>npag) TK.pag=npag;
+  var ini=(TK.pag-1)*tam, fim=Math.min(ini+tam,total);
+  var pagina=lista.slice(ini,fim);
+
+  var podeAgir=USUARIO.podeConcluir;
+  var corpo=pagina.map(function(t){
+    var cls=statusClasse_(t.status);
+    var prazo=t.prazo?fmtdA(t.prazo):"—";
+    var acts="";
+    if(podeAgir){
+      var ehEng=USUARIO.papel==="engenharia";
+      var minha=!ehEng || respsDe(t.resp).indexOf("ENGENHARIA")>=0;
+      if(cls!=="ok" && minha)
+        acts+='<button class="tkbtn ok" data-tkc="'+encodeURIComponent(t.pid)+'|'+encodeURIComponent(t.etapa)+'|'+encodeURIComponent(t.tarefa)+'">✓ Concluir</button>';
+      if(USUARIO.podeEditar)
+        acts+='<button class="tkbtn" data-tke="'+encodeURIComponent(t.pid)+'">Editar</button>';
+    }
+    return '<tr>'+
+      '<td class="tkpid">'+escAspas(t.pid)+'<div style="font-weight:400;color:var(--muted);font-size:11.5px">'+escAspas(t.proj)+'</div></td>'+
+      '<td>'+escAspas(cap(t.etapa))+'</td>'+
+      '<td>'+escAspas(t.tarefa)+'</td>'+
+      '<td>'+escAspas(t.resp)+'</td>'+
+      '<td>'+prazo+'</td>'+
+      '<td><span class="tkst '+cls+'">'+escAspas(t.status||"—")+'</span></td>'+
+      '<td class="tkacts">'+(acts||'<span style="color:var(--line2)">—</span>')+'</td>'+
+    '</tr>';
+  }).join("");
+
+  document.getElementById("tkBody").innerHTML=corpo;
+  document.getElementById("tkVazio").style.display = total? "none":"block";
+  document.getElementById("tkCount").textContent = total+" tarefa"+(total!==1?"s":"");
+
+  /* paginação */
+  var pag=document.getElementById("tkPag");
+  if(npag<=1){ pag.innerHTML=""; }
+  else {
+    pag.innerHTML='<button id="tkPrev"'+(TK.pag<=1?" disabled":"")+'>‹ Anterior</button>'+
+      '<span class="cur">Página '+TK.pag+' de '+npag+'</span>'+
+      '<button id="tkNext"'+(TK.pag>=npag?" disabled":"")+'>Próxima ›</button>';
+    var p=document.getElementById("tkPrev"), n=document.getElementById("tkNext");
+    if(p) p.onclick=function(){ if(TK.pag>1){TK.pag--;renderTarefas();} };
+    if(n) n.onclick=function(){ if(TK.pag<npag){TK.pag++;renderTarefas();} };
+  }
+
+  /* liga as ações */
+  [].forEach.call(document.querySelectorAll("#tkBody [data-tkc]"),function(b){
+    b.onclick=function(){
+      var p=b.getAttribute("data-tkc").split("|").map(decodeURIComponent);
+      tkConcluir(p[0],p[1],p[2],b);
+    };
+  });
+  [].forEach.call(document.querySelectorAll("#tkBody [data-tke]"),function(b){
+    b.onclick=function(){ tkEditar(decodeURIComponent(b.getAttribute("data-tke"))); };
+  });
+}
+
+/* concluir a tarefa direto da tabela (reusa o servidor concluirTarefa) */
+function tkConcluir(pid,etapa,tarefa,btn){
+  if(!confirm("Concluir a tarefa \""+tarefa+"\" de "+pid+" com a data de hoje?")) return;
+  btn.disabled=true; btn.textContent="…";
+  google.script.run
+    .withSuccessHandler(function(t){ try{JSON.parse(t);}catch(e){} carregar(); })
+    .withFailureHandler(function(e){ btn.disabled=false; btn.textContent="✓ Concluir";
+      alert("Não deu certo: "+(e&&e.message?e.message:e)); })
+    .concluirTarefa(pid,etapa,tarefa,iso2br(hojeISO()),TOKEN);
+}
+
+/* editar: abre o modal Novo já na aba "Editar projeto", com o projeto da tarefa selecionado */
+function tkEditar(pid){
+  var ov=document.getElementById("nvOv"); if(!ov) return;
+  ov.classList.add("on");
+  if(typeof montarNovo==="function") montarNovo();   // popula os selects (nvEP etc.)
+  /* ativa a aba "Editar projeto" (data-nv="edit") */
+  var botoes=document.querySelectorAll("#nv .acTabs button");
+  [].forEach.call(botoes,function(b){ b.classList.toggle("on", b.dataset.nv==="edit"); });
+  var pj=document.getElementById("nvProj"), tr=document.getElementById("nvTar"), ed=document.getElementById("nvEdit");
+  if(pj) pj.style.display="none";
+  if(tr) tr.style.display="none";
+  if(ed) ed.style.display="";
+  /* seleciona o projeto e carrega os dados dele */
+  var selP=document.getElementById("nvEP");
+  if(selP){ selP.value=pid; }
+  if(typeof carregarProjetoEdicao==="function") carregarProjetoEdicao();
+}
+
 function render(){
   const f=getF(), c=COL.PROJETOS||{}, P=DADOS.PROJETOS||[];
   const g=classificar(f), proj=g.escopo;
@@ -1103,7 +1316,7 @@ function render(){
     ? ln.map(l=>`<tr><td>${l.id}</td><td>${l.nome}</td><td>${l.fase}</td><td class="num"><span class="tag">${l.at}</span></td></tr>`).join("")
     : `<tr><td colspan="4" style="color:var(--muted)">Nenhum atrasado no filtro.</td></tr>`;
 
-  renderCalendario(f); renderCapacidade(); renderPlano(f); renderErros(f); renderPrevisao(proj); renderAlertas(g,f); renderAprovacao(f);
+  renderCalendario(f); renderCapacidade(); renderPlano(f); renderErros(f); renderPrevisao(proj); renderAlertas(g,f); renderAprovacao(f); renderTarefas();
 }
 
 /* ---- tempo medio do fluxo: ate executivo / ate complementares / com projeto legal ---- */
@@ -2180,12 +2393,12 @@ document.getElementById("nvTE").addEventListener("change",()=>{
 /* ---------- navegacao ---------- */
 function aplicarPapel(){
   const papel=USUARIO.papel||"leitor";
-  const TODAS=["equipe","prazos","plan","qual","aprov"];
+  const TODAS=["equipe","prazos","plan","qual","aprov","tarefas"];
   // decide quais ESCONDER conforme o papel (reversível: mostra/esconde, não remove)
   let esconder=[];
-  if(papel==="comite")            esconder=["equipe","prazos","plan","qual"];
-  else if(papel==="engenharia")   esconder=["equipe","qual","aprov"];
-  else if(!USUARIO.interno)       esconder=["equipe","qual","aprov"];
+  if(papel==="comite")            esconder=["equipe","prazos","plan","qual","tarefas"];
+  else if(papel==="engenharia")   esconder=["equipe","qual","aprov"];   // engenharia VÊ Tarefas (conclui as suas)
+  else if(!USUARIO.interno)       esconder=["equipe","qual","aprov","tarefas"];
   // admin/editor: esconder=[] (veem tudo)
   TODAS.forEach(function(tab){
     const mostrar = esconder.indexOf(tab)<0;
@@ -2209,6 +2422,12 @@ document.getElementById("calPrev").addEventListener("click",()=>{calRef.m--;if(c
 document.getElementById("calNext").addEventListener("click",()=>{calRef.m++;if(calRef.m>11){calRef.m=0;calRef.y++;}renderCalendario(getF());});
 ["fAno","fMes","fFase","fPad"].forEach(id=>document.getElementById(id).addEventListener("change",render));
 document.getElementById("fClear").addEventListener("click",()=>{["fAno","fMes","fFase","fPad"].forEach(id=>document.getElementById(id).value="");termoSel="";render();});
+/* filtros do Menu Tarefas: cada mudança volta p/ página 1 e re-renderiza só a tabela */
+["tkBusca","tkStatus","tkResp","tkEtapa","tkPend"].forEach(function(id){
+  var el=document.getElementById(id); if(!el) return;
+  var ev=(id==="tkBusca")?"input":"change";
+  el.addEventListener(ev,function(){ TK.pag=1; renderTarefas(); });
+});
 document.getElementById("refresh").addEventListener("click",carregar);
 document.getElementById("btPdf").addEventListener("click",()=>window.print());
 /* aplicarPapel NÃO roda aqui: só no receber(), quando o _USER real já chegou */

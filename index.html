@@ -910,7 +910,7 @@ function receber(j){
       COL[t]=colmap(rows[0],SPEC[t],t,faltando);
       DADOS[t]=rows.slice(1).filter(x=>x&&x.some(v=>txt(v)!==""));
     });
-    if(!window._papelAplicado){ aplicarPapel(); window._papelAplicado=true; }
+    aplicarPapel();   // roda sempre: se corrige quando o _USER real chega
     montarFiltros(); render(); montarAcoes(); montarNovo();
     setStatus("Atualizado "+new Date().toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"}));
     const av=faltando.filter(f=>OPCIONAIS.indexOf(f.split(".")[0])<0);
@@ -1349,9 +1349,9 @@ function renderCapacidade(){
     return {ws,resp,load:sem[k].horas,cap:capSemanaH(aus,resp,ws),itens:sem[k].itens,porProj:sem[k].porProj};})
     .filter(x=>x.load>x.cap).sort((a,b)=>a.ws-b.ws||(b.load-b.cap)-(a.load-a.cap));
   const nm=k=>{const p=PESSOAS.find(x=>x.key===k);return p?p.nome:k;};
-  document.getElementById("riscos").innerHTML=conf.length
+  { const _r=document.getElementById("riscos"); if(_r) _r.innerHTML=conf.length
     ? conf.map(x=>`<div class="conf"><span><b>${nm(x.resp)}</b><div class="t">semana de ${fmtd(x.ws)} · ${Object.keys(x.itens).slice(0,2).join(", ")}${Object.keys(x.itens).length>2?"…":""}</div></span><span style="color:var(--red);font-weight:700;white-space:nowrap">${h1(x.load)}h / ${x.cap}h</span></div>`).join("")
-    : `<div style="color:var(--muted);font-size:13px;padding:8px 0">Nenhuma semana acima da capacidade. 👍</div>`;
+    : `<div style="color:var(--muted);font-size:13px;padding:8px 0">Nenhuma semana acima da capacidade. 👍</div>`; }
   renderSugestoes(conf,aus);
   return conf;
 }
@@ -2180,22 +2180,21 @@ document.getElementById("nvTE").addEventListener("change",()=>{
 /* ---------- navegacao ---------- */
 function aplicarPapel(){
   const papel=USUARIO.papel||"leitor";
-  function esconder(tab){
-    const b=document.querySelector('#nav button[data-tab="'+tab+'"]'); if(b) b.remove();
-    const s=document.getElementById("tab-"+tab); if(s) s.remove();
-  }
-  if(papel==="comite"){
-    // comitê: só Visão geral e Aprovação
-    ["equipe","prazos","plan","qual"].forEach(esconder);
-  }else if(papel==="engenharia"){
-    // engenharia: acompanha projetos e prazos, conclui as próprias tarefas;
-    // sem produtividade da equipe, qualidade nem aprovação
-    ["equipe","qual","aprov"].forEach(esconder);
-  }else if(!USUARIO.interno){
-    // leitor (franqueadora): sem Equipe, Qualidade nem Aprovação
-    ["equipe","qual","aprov"].forEach(esconder);
-  }
-  // admin/editor veem tudo (editor não pode decidir, mas pode acompanhar a fila)
+  const TODAS=["equipe","prazos","plan","qual","aprov"];
+  // decide quais ESCONDER conforme o papel (reversível: mostra/esconde, não remove)
+  let esconder=[];
+  if(papel==="comite")            esconder=["equipe","prazos","plan","qual"];
+  else if(papel==="engenharia")   esconder=["equipe","qual","aprov"];
+  else if(!USUARIO.interno)       esconder=["equipe","qual","aprov"];
+  // admin/editor: esconder=[] (veem tudo)
+  TODAS.forEach(function(tab){
+    const mostrar = esconder.indexOf(tab)<0;
+    const b=document.querySelector('#nav button[data-tab="'+tab+'"]');
+    if(b) b.style.display = mostrar ? "" : "none";
+    const s=document.getElementById("tab-"+tab);
+    if(s && !mostrar) s.style.display="none";
+    else if(s && mostrar && s.classList.contains("on")) s.style.display="";
+  });
 }
 function irPara(tab){
   [...document.querySelectorAll("#nav button")].forEach(b=>b.classList.toggle("on",b.dataset.tab===tab));

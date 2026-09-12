@@ -185,7 +185,8 @@ tr:last-child td{border-bottom:0}
 .pjtoggle button{border:0;background:#fff;padding:8px 12px;font-size:15px;cursor:pointer;color:var(--muted);line-height:1}
 .pjtoggle button.on{background:var(--accent);color:#fff}
 /* modo lista */
-.pjrow{display:flex;align-items:center;gap:14px;padding:12px 14px;border:1px solid var(--line2);border-radius:10px;background:#fff;margin-bottom:8px;cursor:pointer;transition:box-shadow .12s,border-color .12s}
+#pjLista:not(.pjgrid){display:block}
+.pjrow{display:flex!important;align-items:center;gap:14px;padding:12px 14px;border:1px solid var(--line2);border-radius:10px;background:#fff;margin-bottom:8px;cursor:pointer;transition:box-shadow .12s,border-color .12s}
 .pjrow:hover{border-color:var(--accent2);box-shadow:0 2px 12px rgba(21,97,109,.12)}
 .pjrow .pjbar-st{width:4px;align-self:stretch;border-radius:3px;flex:none}
 .pjrow .pjid{font-weight:700;color:var(--accent);white-space:nowrap}
@@ -591,6 +592,13 @@ tr:last-child td{border-bottom:0}
       <select id="tkResp" class="tksel"><option value="">Todos os responsáveis</option></select>
       <select id="tkEtapa" class="tksel"><option value="">Todas as etapas</option></select>
       <label class="tkchk"><input type="checkbox" id="tkPend"> Só pendentes</label>
+      <select id="tkOrd" class="tksel" title="Ordenar por">
+        <option value="prazo">Ordenar: prazo (mais próximo)</option>
+        <option value="prazo-d">Ordenar: prazo (mais distante)</option>
+        <option value="projeto">Ordenar: projeto (A→Z)</option>
+        <option value="status">Ordenar: status</option>
+        <option value="resp">Ordenar: responsável</option>
+      </select>
       <span id="tkCount" class="tkcount"></span>
     </div>
     <div class="tkwrap">
@@ -614,6 +622,13 @@ tr:last-child td{border-bottom:0}
       <select id="pjFase" class="tksel"><option value="">Todas as fases</option></select>
       <select id="pjPad" class="tksel"><option value="">Todos os padrões</option></select>
       <label class="tkchk"><input type="checkbox" id="pjAtras"> Só atrasados</label>
+      <select id="pjOrd" class="tksel" title="Ordenar por">
+        <option value="id">Ordenar: ID do projeto</option>
+        <option value="nome">Ordenar: nome (A→Z)</option>
+        <option value="prog">Ordenar: progresso (maior)</option>
+        <option value="prog-a">Ordenar: progresso (menor)</option>
+        <option value="fase">Ordenar: fase</option>
+      </select>
       <span id="pjCount" class="tkcount"></span>
       <div class="pjtoggle">
         <button id="pjVLista" class="on" title="Lista">☰</button>
@@ -1176,6 +1191,25 @@ function pjFiltrar(){
     if(busca && KEY(id+" "+nome).indexOf(busca)<0) return;
     out.push(r);
   });
+  /* ordenação escolhida */
+  var ord=(document.getElementById("pjOrd")||{}).value||"id";
+  var FASEORD=ORDEM_ETAPAS||{};
+  out.sort(function(a,b){
+    var ia=txt(G(a,cp.id)), ib=txt(G(b,cp.id));
+    if(ord==="nome"){ return (txt(G(a,cp.nome))||"").localeCompare(txt(G(b,cp.nome))||"","pt"); }
+    if(ord==="prog"||ord==="prog-a"){
+      var pa=pjProgresso_(ia).pct, pb=pjProgresso_(ib).pct;
+      if(pa!==pb) return ord==="prog"? pb-pa : pa-pb;
+      return ia.localeCompare(ib,"pt",{numeric:true});
+    }
+    if(ord==="fase"){
+      var fa=FASEORD[KEY(G(a,cp.fase))]||99, fb=FASEORD[KEY(G(b,cp.fase))]||99;
+      if(fa!==fb) return fa-fb;
+      return ia.localeCompare(ib,"pt",{numeric:true});
+    }
+    /* padrão: por ID, com ordenação numérica (FT.2 antes de FT.10) */
+    return ia.localeCompare(ib,"pt",{numeric:true});
+  });
   return out;
 }
 
@@ -1370,11 +1404,22 @@ function tkFiltrar(){
     out.push({pid:pid,proj:proj,etapa:etapa,tarefa:tarefa,resp:resp,status:st,
               prazo:pdate(G(r,ct.fimPlan)), fimReal:pdate(G(r,ct.fimReal))});
   });
-  /* ordena por prazo (nulos no fim), depois por ID */
-  out.sort(function(a,b){
+  /* ordenação escolhida no select "Ordenar por" */
+  var ord=(document.getElementById("tkOrd")||{}).value||"prazo";
+  var STORD={ "Não iniciado":0,"Em andamento":1,"Atrasado":2,"Concluído":3 };
+  function porPrazo(a,b,dir){
     var ta=a.prazo?a.prazo.getTime():8.64e15, tb=b.prazo?b.prazo.getTime():8.64e15;
-    if(ta!==tb) return ta-tb;
+    if(ta!==tb) return (ta-tb)*dir;
     return a.pid<b.pid?-1:a.pid>b.pid?1:0;
+  }
+  out.sort(function(a,b){
+    if(ord==="prazo")   return porPrazo(a,b,1);
+    if(ord==="prazo-d") return porPrazo(a,b,-1);
+    if(ord==="projeto"){ var c=(a.proj||"").localeCompare(b.proj||"","pt"); return c||porPrazo(a,b,1); }
+    if(ord==="status"){ var sa=STORD[a.status]==null?9:STORD[a.status], sb=STORD[b.status]==null?9:STORD[b.status];
+      return sa!==sb? sa-sb : porPrazo(a,b,1); }
+    if(ord==="resp"){ var c2=(a.resp||"").localeCompare(b.resp||"","pt"); return c2||porPrazo(a,b,1); }
+    return porPrazo(a,b,1);
   });
   return out;
 }
@@ -2686,13 +2731,13 @@ document.getElementById("calNext").addEventListener("click",()=>{calRef.m++;if(c
 ["fAno","fMes","fFase","fPad"].forEach(id=>document.getElementById(id).addEventListener("change",render));
 document.getElementById("fClear").addEventListener("click",()=>{["fAno","fMes","fFase","fPad"].forEach(id=>document.getElementById(id).value="");termoSel="";render();});
 /* filtros do Menu Tarefas: cada mudança volta p/ página 1 e re-renderiza só a tabela */
-["tkBusca","tkStatus","tkResp","tkEtapa","tkPend"].forEach(function(id){
+["tkBusca","tkStatus","tkResp","tkEtapa","tkPend","tkOrd"].forEach(function(id){
   var el=document.getElementById(id); if(!el) return;
   var ev=(id==="tkBusca")?"input":"change";
   el.addEventListener(ev,function(){ TK.pag=1; renderTarefas(); });
 });
 /* filtros e toggle do Menu Projetos */
-["pjBusca","pjFase","pjPad","pjAtras"].forEach(function(id){
+["pjBusca","pjFase","pjPad","pjAtras","pjOrd"].forEach(function(id){
   var el=document.getElementById(id); if(!el) return;
   var ev=(id==="pjBusca")?"input":"change";
   el.addEventListener(ev,renderProjetos);

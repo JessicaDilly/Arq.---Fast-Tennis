@@ -218,6 +218,7 @@ tr:last-child td{border-bottom:0}
 .pjf-head{display:flex;align-items:center;gap:12px;margin-bottom:4px}
 .pjf-head .id{font-weight:700;color:var(--accent);font-size:14px}
 .pjf-head .fase{font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:var(--line);color:var(--muted)}
+.pjf-atraso{font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:#fbe6e4;color:#b3382f}
 .pjf-nome{font-size:20px;font-weight:800;letter-spacing:-.3px;margin:0 0 16px}
 .pjf-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:18px}
 .pjf-cel{background:var(--line);border-radius:10px;padding:10px 12px}
@@ -1386,6 +1387,20 @@ function pjFaseClasse_(fase){
 }
 
 /* progresso do projeto = tarefas concluídas / total */
+function pjTemAtraso_(pid){
+  var ct=COL.TAREFAS||{};
+  var atrasada=false;
+  (DADOS.TAREFAS||[]).some(function(r){
+    if(txt(G(r,ct.idProj))!==pid) return false;
+    var st=KEY(G(r,ct.status));
+    if(st.indexOf("ATRAS")>=0){ atrasada=true; return true; }
+    /* fallback: fim planejado passou e não concluída */
+    var fp=pdate(G(r,ct.fimPlan)); var concl = st.indexOf("CONCLU")>=0 || (Number(G(r,ct.pct))||0)>=1;
+    if(fp && !concl && fp < hoje){ atrasada=true; return true; }
+    return false;
+  });
+  return atrasada;
+}
 function pjProgresso_(pid){
   var ct=COL.TAREFAS||{}, tot=0, ok=0;
   (DADOS.TAREFAS||[]).forEach(function(r){
@@ -1421,7 +1436,7 @@ function pjFiltrar(){
     var nome=txt(G(r,cp.nome)), fase=txt(G(r,cp.fase)), pad=txt(G(r,cp.padrao)), st=txt(G(r,cp.status));
     if(ff && KEY(fase)!==ff) return;
     if(fp && KEY(pad)!==fp) return;
-    if(soAtr && KEY(st).indexOf("ATRAS")<0) return;
+    if(soAtr && !pjTemAtraso_(txt(G(r,cp.id)))) return;
     if(busca && KEY(id+" "+nome).indexOf(busca)<0) return;
     out.push(r);
   });
@@ -1594,8 +1609,9 @@ function pjAbrirFicha(pid){
            '<button class="pjf-btn" id="pjfNovaTarefa">Adicionar tarefa</button>';
   }
 
+  var seloAtraso = pjTemAtraso_(pid) ? '<span class="pjf-atraso">⚠ Tarefa(s) em atraso</span>' : '';
   document.getElementById("pjFichaBody").innerHTML=
-    '<div class="pjf-head"><span class="id">'+escAspas(pid)+'</span>'+
+    '<div class="pjf-head"><span class="id">'+escAspas(pid)+'</span>'+seloAtraso+
       '<span class="fase" style="background:'+pjFaseClasse_(fase)+'22;color:'+pjFaseClasse_(fase)+'">'+escAspas(cap(fase)||"—")+'</span></div>'+
     '<h2 class="pjf-nome">'+escAspas(nome)+'</h2>'+
     '<div class="pjf-grid">'+cels.map(function(c){

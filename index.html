@@ -255,6 +255,18 @@ tr:last-child td{border-bottom:0}
 .rl-cats{columns:2;column-gap:24px}
 .rl-cats .rl-list{break-inside:avoid}
 .rl-foot{margin-top:16px;padding-top:10px;border-top:1px solid var(--line2);font-size:10px;color:var(--muted);text-align:center}
+.rl-page{margin-bottom:24px}
+.rl-sec{margin-bottom:18px}
+.rl-sec h2{font-size:14px;color:var(--accent);margin:0 0 12px;padding-bottom:6px;border-bottom:2px solid var(--accent2)}
+.rl-proj{break-inside:avoid;margin-bottom:10px;padding:8px 10px;background:var(--line);border-radius:8px}
+.rl-proj-t{font-size:12.5px;color:var(--ink);margin-bottom:4px}
+.rl-proj ul{margin:0;padding:0 0 0 16px;list-style:disc}
+.rl-proj li{font-size:12px;color:var(--muted);padding:1px 0}
+ul.prev{list-style:none;padding:0;margin:0}
+ul.prev li{font-size:12px;padding:2px 0}
+ul.prev .ok{color:var(--green);font-weight:700}
+ul.prev .pend{color:var(--amber);font-weight:700}
+ul.prev .muted{color:var(--muted);font-size:11px}
 @media print{
   body *{visibility:hidden!important}
   #tab-relatorio,#tab-relatorio *{visibility:visible!important}
@@ -263,6 +275,8 @@ tr:last-child td{border-bottom:0}
   .rlfolha{border:0;box-shadow:none;max-width:100%;margin:0;padding:0}
   @page{size:A4;margin:12mm}
   .rl-box canvas{max-height:150px}
+  .rl-break{break-before:page;page-break-before:always}
+  .rl-page{margin-bottom:0}
 }
 /* ---- alertas ---- */
 .alerts{display:flex;flex-direction:column;gap:8px;margin-bottom:18px}
@@ -1222,35 +1236,43 @@ function rlDados(){
   var ct=COL.TAREFAS||{}, cp=COL.PROJETOS||{};
   var mes=RL.mes, ano=RL.ano;
   var noMes=function(d){ return d && d.getMonth()+1===mes && d.getFullYear()===ano; };
+  /* engenharia e Bruna são a mesma pessoa: mapeia ENGENHARIA -> BRUNA */
+  function pessoasDe(v){ return respsDe(v).map(function(p){ return p==="ENGENHARIA"?"BRUNA":p; }); }
 
-  /* entregas do mês = tarefas concluídas (fim real no mês) */
-  var entregas=[];       // {pid,proj,etapa,resp,fase}
-  var porEtapa={}, porPessoa={};
+  var entregas=[], porEtapa={}, porPessoa={};
   (DADOS.TAREFAS||[]).forEach(function(r){
     var fr=pdate(G(r,ct.fimReal));
     if(!noMes(fr)) return;
     if(KEY(G(r,ct.status)).indexOf("CONCLU")<0 && (Number(G(r,ct.pct))||0)<1) return;
-    var etapa=txt(G(r,ct.etapa)), proj=txt(G(r,ct.proj)), pid=txt(G(r,ct.idProj));
-    entregas.push({pid:pid,proj:proj,etapa:etapa,resp:txt(G(r,ct.resp))});
+    var etapa=txt(G(r,ct.etapa)), proj=txt(G(r,ct.proj)), pid=txt(G(r,ct.idProj)), tarefa=txt(G(r,ct.tarefa));
+    entregas.push({pid:pid,proj:proj,etapa:etapa,tarefa:tarefa,resp:txt(G(r,ct.resp))});
     var ek=KEY(etapa); porEtapa[ek]=(porEtapa[ek]||0)+1;
-    respsDe(G(r,ct.resp)).forEach(function(p){ porPessoa[p]=(porPessoa[p]||0)+1; });
+    /* cada pessoa (dedup: BRUNA não conta 2x se aparecer como BRUNA e ENGENHARIA) */
+    var vis={};
+    pessoasDe(G(r,ct.resp)).forEach(function(p){ if(!vis[p]){ vis[p]=1; porPessoa[p]=(porPessoa[p]||0)+1; } });
   });
 
-  /* entradas de projeto no mês = projetos cujo início real caiu no mês */
+  /* previstas no mês = tarefas com FIM PLANEJADO no mês (independe de concluída) */
+  var previstas=[];
+  (DADOS.TAREFAS||[]).forEach(function(r){
+    var fp=pdate(G(r,ct.fimPlan));
+    if(!noMes(fp)) return;
+    previstas.push({pid:txt(G(r,ct.idProj)),proj:txt(G(r,ct.proj)),etapa:txt(G(r,ct.etapa)),
+                    tarefa:txt(G(r,ct.tarefa)), concluida: (KEY(G(r,ct.status)).indexOf("CONCLU")>=0 || (Number(G(r,ct.pct))||0)>=1)});
+  });
+
   var entradas=[];
   (DADOS.PROJETOS||[]).forEach(function(r){
     var ir=pdate(G(r,cp.iniReal));
-    if(noMes(ir)) entradas.push({pid:txt(G(r,cp.id)),proj:txt(G(r,cp.nome)),fase:txt(G(r,cp.fase))});
+    if(noMes(ir)) entradas.push({pid:txt(G(r,cp.id)),proj:txt(G(r,cp.nome))});
   });
-
-  /* projetos concluídos (entregues) no mês = fim real no mês */
   var concluidos=[];
   (DADOS.PROJETOS||[]).forEach(function(r){
     var fr=pdate(G(r,cp.fimReal));
     if(noMes(fr)) concluidos.push({pid:txt(G(r,cp.id)),proj:txt(G(r,cp.nome))});
   });
 
-  return {entregas:entregas, porEtapa:porEtapa, porPessoa:porPessoa, entradas:entradas, concluidos:concluidos};
+  return {entregas:entregas, porEtapa:porEtapa, porPessoa:porPessoa, entradas:entradas, concluidos:concluidos, previstas:previstas};
 }
 
 function renderRelatorio(){
@@ -1258,63 +1280,98 @@ function renderRelatorio(){
   rlMontarSeletores();
   var d=rlDados();
   var totalEnt=d.entregas.length;
-  var nProj=(DADOS.PROJETOS||[]).length;
-
-  /* meta do mês (total da equipe) */
   var fMeta={ano:String(RL.ano),mes:String(RL.mes)};
-  var metaTotal=0;
-  PESSOAS.forEach(function(p){ var m=metaPessoa(p.key,fMeta); if(m) metaTotal+=m; });
-
+  var metaTotal=0; PESSOAS.forEach(function(p){ var m=metaPessoa(p.key,fMeta); if(m) metaTotal+=m; });
   var per=MESESL[RL.mes-1]+" de "+RL.ano;
+  var ek=function(e){ return KEY(e.etapa); };
 
-  /* ---- KPIs ---- */
+  /* KPIs */
   var kpis=[
     ["ENTREGAS NO MÊS", totalEnt, "tarefas concluídas"],
     ["PROJETOS ENTREGUES", d.concluidos.length, "finalizados no mês"],
     ["ENTRADAS", d.entradas.length, "novos projetos"],
     ["META DO MÊS", metaTotal||"—", metaTotal? "entregas planejadas":"sem meta"]
   ];
-  var kpiHtml=kpis.map(function(k){
-    return '<div class="rl-kpi"><div class="n">'+k[1]+'</div><div class="k">'+k[0]+'</div><div class="s">'+k[2]+'</div></div>';
-  }).join("");
+  var kpiHtml=kpis.map(function(k){ return '<div class="rl-kpi"><div class="n">'+k[1]+'</div><div class="k">'+k[0]+'</div><div class="s">'+k[2]+'</div></div>'; }).join("");
 
-  /* ---- listas por categoria (entregas agrupadas por fase-etapa) ---- */
-  function grupo(titulo, filtroFn){
-    var its=d.entregas.filter(filtroFn);
-    var corpo = its.length
-      ? '<ul>'+its.map(function(e){ return '<li><span class="b">'+escAspas(e.pid)+'</span> '+escAspas(e.proj)+'</li>'; }).join("")+'</ul>'
-      : '<div class="vazio">Nenhuma entrega.</div>';
-    return '<div class="rl-list"><h3>'+titulo+'</h3>'+corpo+'</div>';
+  /* lista simples (ID + projeto) p/ entradas e categorias objetivas */
+  function listaSimples(its){
+    return its.length ? '<ul>'+its.map(function(e){ return '<li><span class="b">'+escAspas(e.pid)+'</span> '+escAspas(e.proj)+'</li>'; }).join("")+'</ul>'
+                      : '<div class="vazio">Nenhuma.</div>';
   }
-  var ek=function(e){ return KEY(e.etapa); };
-  var catExec = grupo("Executivo entregue", function(e){ return ek(e).indexOf("EXECUTIVO")>=0; });
-  var catAnte = grupo("Anteprojeto entregue", function(e){ return ek(e).indexOf("ANTEPROJETO")>=0 || ek(e).indexOf("APRESENTA")>=0; });
-  var catCompl= grupo("Complementares", function(e){ return ek(e).indexOf("COMPLEMENTAR")>=0; });
-  var catOutras=grupo("Outras etapas", function(e){ var k=ek(e); return k.indexOf("EXECUTIVO")<0 && k.indexOf("ANTEPROJETO")<0 && k.indexOf("APRESENTA")<0 && k.indexOf("COMPLEMENTAR")<0; });
+  function catSimples(titulo,filtro){ return '<div class="rl-list"><h3>'+titulo+'</h3>'+listaSimples(d.entregas.filter(filtro))+'</div>'; }
 
-  var entradasHtml = d.entradas.length
-    ? '<ul>'+d.entradas.map(function(e){ return '<li><span class="b">'+escAspas(e.pid)+'</span> '+escAspas(e.proj)+'</li>'; }).join("")+'</ul>'
-    : '<div class="vazio">Nenhuma entrada no mês.</div>';
+  var catExec = catSimples("Executivo entregue", function(e){ return ek(e).indexOf("EXECUTIVO")>=0; });
+  var catAnte = catSimples("Anteprojeto entregue", function(e){ return ek(e).indexOf("ANTEPROJETO")>=0 || ek(e).indexOf("APRESENTA")>=0; });
+  var catCompl= catSimples("Complementares", function(e){ return ek(e).indexOf("COMPLEMENTAR")>=0; });
+  var entradasBox='<div class="rl-list"><h3>Entradas de projeto</h3>'+listaSimples(d.entradas)+'</div>';
+
+  /* OUTRAS ETAPAS: descreve o que foi feito, agrupando por projeto */
+  var outras=d.entregas.filter(function(e){ var k=ek(e);
+    return k.indexOf("EXECUTIVO")<0 && k.indexOf("ANTEPROJETO")<0 && k.indexOf("APRESENTA")<0 && k.indexOf("COMPLEMENTAR")<0; });
+  var porProj={};
+  outras.forEach(function(e){ var key=e.pid+"||"+e.proj; (porProj[key]=porProj[key]||[]).push(e); });
+  var outrasHtml;
+  if(!outras.length){ outrasHtml='<div class="vazio">Nenhuma.</div>'; }
+  else {
+    outrasHtml=Object.keys(porProj).map(function(key){
+      var parts=key.split("||"), pid=parts[0], proj=parts[1], its=porProj[key];
+      var itens=its.map(function(e){
+        var desc=e.tarefa && KEY(e.tarefa)!==KEY(e.etapa) ? cap(e.etapa)+" — "+e.tarefa : cap(e.etapa);
+        return '<li>'+escAspas(desc)+'</li>';
+      }).join("");
+      return '<div class="rl-proj"><div class="rl-proj-t"><span class="b">'+escAspas(pid)+'</span> '+escAspas(proj)+'</div><ul>'+itens+'</ul></div>';
+    }).join("");
+  }
+
+  /* PREVISTAS NO MÊS: por etapa, com o projeto e situação */
+  var prevPorEtapa={};
+  d.previstas.forEach(function(p){ var k=KEY(p.etapa)||"OUTRA"; (prevPorEtapa[k]=prevPorEtapa[k]||[]).push(p); });
+  var ordemEt=Object.keys(prevPorEtapa).sort(function(a,b){ return (ORDEM_ETAPAS[a]||99)-(ORDEM_ETAPAS[b]||99); });
+  var prevHtml = d.previstas.length
+    ? ordemEt.map(function(k){
+        var its=prevPorEtapa[k];
+        var li=its.map(function(p){
+          var mark=p.concluida?'<span class="ok">✓</span>':'<span class="pend">•</span>';
+          return '<li>'+mark+' <span class="b">'+escAspas(p.pid)+'</span> '+escAspas(p.proj)+(p.tarefa&&KEY(p.tarefa)!==KEY(p.etapa)?' <span class="muted">('+escAspas(p.tarefa)+')</span>':'')+'</li>';
+        }).join("");
+        return '<div class="rl-list"><h3>'+cap(its[0].etapa)+'</h3><ul class="prev">'+li+'</ul></div>';
+      }).join("")
+    : '<div class="vazio">Nenhuma entrega prevista no mês.</div>';
+
+  var quem = (USUARIO.nome||"—");
 
   document.getElementById("rlFolha").innerHTML=
-    '<div class="rl-cab"><div><h1>Desempenho — Arquitetura</h1>'+
-      '<div class="sub">Fast Tennis · Gestão de Projetos</div></div>'+
-      '<div class="per">'+per+'</div></div>'+
-    '<div class="rl-kpis">'+kpiHtml+'</div>'+
-    '<div class="rl-graf">'+
-      '<div class="rl-box"><h3>Entregas por etapa</h3><canvas id="rlCanEtapa"></canvas></div>'+
-      '<div class="rl-box"><h3>Rendimento por pessoa</h3><canvas id="rlCanPessoa"></canvas></div>'+
+    /* ---------- FOLHA 1 ---------- */
+    '<div class="rl-page">'+
+      '<div class="rl-cab"><div><h1>Desempenho — Arquitetura</h1>'+
+        '<div class="sub">Fast Tennis · Gestão de Projetos</div></div>'+
+        '<div class="per">'+per+'</div></div>'+
+      '<div class="rl-kpis">'+kpiHtml+'</div>'+
+      '<div class="rl-graf">'+
+        '<div class="rl-box"><h3>Entregas por etapa</h3><canvas id="rlCanEtapa"></canvas></div>'+
+        '<div class="rl-box"><h3>Rendimento por pessoa</h3><canvas id="rlCanPessoa"></canvas></div>'+
+      '</div>'+
+      '<div class="rl-cats">'+entradasBox+catExec+catAnte+catCompl+'</div>'+
+      '<div class="rl-foot">Relatório gerado por '+escAspas(quem)+' em '+fmtdA(hoje)+' · dados de '+per+' · página 1 de 2</div>'+
     '</div>'+
-    '<div class="rl-list"><h3>Entradas de projeto</h3>'+entradasHtml+'</div>'+
-    '<div class="rl-cats">'+catExec+catAnte+catCompl+catOutras+'</div>'+
-    '<div class="rl-foot">Gerado pelo painel de gestão em '+fmtdA(hoje)+' · dados de '+per+'</div>';
+    /* ---------- FOLHA 2 ---------- */
+    '<div class="rl-page rl-break">'+
+      '<div class="rl-cab"><div><h1>Desempenho — Arquitetura</h1>'+
+        '<div class="sub">Detalhamento de entregas</div></div><div class="per">'+per+'</div></div>'+
+      '<div class="rl-sec"><h2>Outras etapas — o que foi feito</h2>'+outrasHtml+'</div>'+
+      '<div class="rl-sec"><h2>Entregas previstas no mês (por etapa)</h2><div class="rl-cats">'+prevHtml+'</div></div>'+
+      '<div class="rl-foot">Relatório gerado por '+escAspas(quem)+' em '+fmtdA(hoje)+' · dados de '+per+' · página 2 de 2</div>'+
+    '</div>';
 
-  /* ---- gráficos ---- */
+  /* gráficos */
   var etL=Object.keys(d.porEtapa).sort(function(a,b){return d.porEtapa[b]-d.porEtapa[a];});
   var etV=etL.map(function(k){return d.porEtapa[k];});
   if(etL.length) barrasH("rlCanEtapa", etL.map(cap), [{label:"Entregas",data:etV,backgroundColor:HEX.accent2,borderRadius:4}], false);
-  var pesL=Object.keys(d.porPessoa), pesV=pesL.map(function(k){return d.porPessoa[k];});
-  if(pesL.length) barras("rlCanPessoa", pesL.map(nomeDe), [{label:"Entregas",data:pesV,backgroundColor:HEX.accent,borderRadius:4}], false);
+  /* rendimento SÓ Pollyana, Jessica, Bruna (nessa ordem), engenharia já somada em Bruna */
+  var fixos=["POLLYANA","JESSICA","BRUNA"];
+  var pesV=fixos.map(function(k){return d.porPessoa[k]||0;});
+  barras("rlCanPessoa", fixos.map(function(k){return cap(k);}), [{label:"Entregas",data:pesV,backgroundColor:HEX.accent,borderRadius:4}], false);
 }
 
 /* ============ MENU PROJETOS ============ */

@@ -631,12 +631,9 @@ tr:last-child td{border-bottom:0}
       <select id="pjPad" class="tksel"><option value="">Todos os padrões</option></select>
       <label class="tkchk"><input type="checkbox" id="pjAtras"> Só atrasados</label>
       <select id="pjOrd" class="tksel" title="Ordenar por">
-        <option value="ini">Ordenar: início (mais antigo)</option>
-        <option value="ini-d">Ordenar: início (mais recente)</option>
-        <option value="id">Ordenar: ID do projeto</option>
+        <option value="novo">Ordenar: mais novo → mais antigo</option>
+        <option value="antigo">Ordenar: mais antigo → mais novo</option>
         <option value="nome">Ordenar: nome (A→Z)</option>
-        <option value="prog">Ordenar: progresso (maior)</option>
-        <option value="prog-a">Ordenar: progresso (menor)</option>
         <option value="fase">Ordenar: fase</option>
       </select>
       <select id="pjQtd" class="tksel" title="Itens por página">
@@ -878,6 +875,7 @@ const google = { script: { run: (function(){
     criarProjeto:["dadosJson","token"],
     criarTarefa:["dadosJson","token"],
     editarProjeto:["dadosJson","token"],
+    mudarFaseProjeto:["projId","fase","token"],
     decidirAprovacao:["refStr","status","observacao","token"]
   };
   function fazer(acao,args){
@@ -1209,26 +1207,20 @@ function pjFiltrar(){
     out.push(r);
   });
   /* ordenação escolhida */
-  var ord=(document.getElementById("pjOrd")||{}).value||"ini";
+  var ord=(document.getElementById("pjOrd")||{}).value||"novo";
   var FASEORD=ORDEM_ETAPAS||{};
-  function tini(r){ var d=pdate(G(r,cp.iniPlan)); return d?d.getTime():8.64e15; }
+  /* o ID (FT.n sequencial) reflete a ordem de criação do projeto */
   out.sort(function(a,b){
     var ia=txt(G(a,cp.id)), ib=txt(G(b,cp.id));
-    if(ord==="ini"){ var da=tini(a),db=tini(b); return da!==db? da-db : ia.localeCompare(ib,"pt",{numeric:true}); }
-    if(ord==="ini-d"){ var da2=tini(a),db2=tini(b); return da2!==db2? db2-da2 : ia.localeCompare(ib,"pt",{numeric:true}); }
-    if(ord==="nome"){ return (txt(G(a,cp.nome))||"").localeCompare(txt(G(b,cp.nome))||"","pt"); }
-    if(ord==="prog"||ord==="prog-a"){
-      var pa=pjProgresso_(ia).pct, pb=pjProgresso_(ib).pct;
-      if(pa!==pb) return ord==="prog"? pb-pa : pa-pb;
-      return ia.localeCompare(ib,"pt",{numeric:true});
-    }
+    if(ord==="antigo") return ia.localeCompare(ib,"pt",{numeric:true});
+    if(ord==="nome")   return (txt(G(a,cp.nome))||"").localeCompare(txt(G(b,cp.nome))||"","pt");
     if(ord==="fase"){
       var fa=FASEORD[KEY(G(a,cp.fase))]||99, fb=FASEORD[KEY(G(b,cp.fase))]||99;
       if(fa!==fb) return fa-fb;
-      return ia.localeCompare(ib,"pt",{numeric:true});
+      return ib.localeCompare(ia,"pt",{numeric:true});
     }
-    /* padrão: por ID, com ordenação numérica (FT.2 antes de FT.10) */
-    return ia.localeCompare(ib,"pt",{numeric:true});
+    /* padrão "novo": ID decrescente (mais novo primeiro) */
+    return ib.localeCompare(ia,"pt",{numeric:true});
   });
   return out;
 }
@@ -1339,7 +1331,11 @@ function pjAbrirFicha(pid){
 
   var botoes="";
   if(USUARIO.podeEditar){
-    botoes='<button class="pjf-btn prim" id="pjfEditar">Editar dados do projeto</button>'+
+    var FASES_PJ=["NÃO INICIADO","ANTEPROJETO","APROVAÇÃO","EXECUTIVO","PROJETO LEGAL","COMPLEMENTARES","CONCLUIDO","PAUSADO","CANCELADO"];
+    var optsFase=FASES_PJ.map(function(f){ return '<option value="'+f+'"'+(KEY(f)===KEY(fase)?" selected":"")+'>'+cap(f)+'</option>'; }).join("");
+    botoes='<label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted)">Fase: '+
+             '<select id="pjfFase" class="tksel">'+optsFase+'</select></label>'+
+           '<button class="pjf-btn prim" id="pjfEditar">Editar dados do projeto</button>'+
            '<button class="pjf-btn" id="pjfNovaTarefa">Adicionar tarefa</button>';
   }
 
@@ -1355,6 +1351,20 @@ function pjAbrirFicha(pid){
     '<tbody>'+(linhasT||'<tr><td colspan="6" style="padding:14px;color:var(--muted)">Nenhuma tarefa.</td></tr>')+'</tbody></table></div>';
 
   /* liga ações da ficha */
+  var self=document.getElementById("pjfFase");
+  if(self) self.onchange=function(){
+    var nova=self.value;
+    var aviso = nova==="CANCELADO" ? "Cancelar o projeto vai marcar TODAS as tarefas dele como concluídas. Confirma?"
+              : nova==="PAUSADO"   ? "Pausar o projeto. Confirma?"
+              : "Alterar a fase para "+cap(nova)+"?";
+    if(!confirm(aviso)){ self.value=fase; return; }
+    self.disabled=true;
+    google.script.run
+      .withSuccessHandler(function(){ pjFecharFicha(); carregar(); })
+      .withFailureHandler(function(e){ self.disabled=false;
+        alert("Não deu certo: "+(e&&e.message?e.message:e)); })
+      .mudarFaseProjeto(pid, nova, TOKEN);
+  };
   var be=document.getElementById("pjfEditar");
   if(be) be.onclick=function(){ pjFecharFicha(); tkEditar(pid); };
   var bt=document.getElementById("pjfNovaTarefa");

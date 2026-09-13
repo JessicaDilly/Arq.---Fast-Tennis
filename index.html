@@ -9,6 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 :root{--bg:#F7F8FA;--card:#FFFFFF;--ink:#19222A;--muted:#7A858C;--line:#ECEEF1;--line2:#F2F4F6;--accent:#15616D;--accent2:#5E9AA3;--green:#3B8C6E;--amber:#D19A2E;--red:#C2554F;--gray:#AEB6BC;--cancel:#CDD3D8;--r:14px;--shadow:0 1px 2px rgba(20,40,50,.04)}
 *{box-sizing:border-box}
@@ -229,6 +230,40 @@ tr:last-child td{border-bottom:0}
 .pjf-btn.prim{background:var(--accent);color:#fff;border-color:var(--accent)}
 .pjf-btn.prim:hover{background:#0f4e58;color:#fff}
 @media(max-width:760px){.pjrow{flex-wrap:wrap}.pjprog{width:100%}}
+/* ===== Relatório mensal (PDF) ===== */
+.rlbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:16px}
+.rlfolha{background:#fff;max-width:820px;margin:0 auto;padding:28px 32px;border:1px solid var(--line2);border-radius:12px;box-shadow:0 2px 16px rgba(15,30,36,.06)}
+.rl-cab{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid var(--accent);padding-bottom:12px;margin-bottom:18px}
+.rl-cab h1{font-size:22px;margin:0;letter-spacing:-.4px;color:var(--accent)}
+.rl-cab .sub{font-size:12px;color:var(--muted);margin-top:2px}
+.rl-cab .per{font-size:14px;font-weight:700;color:var(--ink);text-align:right}
+.rl-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px}
+.rl-kpi{border:1px solid var(--line2);border-radius:10px;padding:11px 13px;background:var(--line)}
+.rl-kpi .n{font-size:24px;font-weight:800;line-height:1;color:var(--accent)}
+.rl-kpi .k{font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:700;margin-top:5px}
+.rl-kpi .s{font-size:10px;color:var(--muted);margin-top:2px}
+.rl-graf{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px}
+.rl-box{border:1px solid var(--line2);border-radius:10px;padding:12px 14px}
+.rl-box h3{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin:0 0 10px;font-weight:700}
+.rl-box canvas{max-height:180px}
+.rl-list{margin-bottom:16px}
+.rl-list h3{font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--accent);margin:0 0 8px;font-weight:700;border-bottom:1px solid var(--line2);padding-bottom:5px}
+.rl-list ul{margin:0;padding:0 0 0 2px;list-style:none}
+.rl-list li{font-size:12.5px;padding:3px 0;color:var(--ink);display:flex;gap:8px}
+.rl-list li .b{color:var(--accent2);font-weight:700}
+.rl-list .vazio{font-size:12px;color:var(--muted);font-style:italic}
+.rl-cats{columns:2;column-gap:24px}
+.rl-cats .rl-list{break-inside:avoid}
+.rl-foot{margin-top:16px;padding-top:10px;border-top:1px solid var(--line2);font-size:10px;color:var(--muted);text-align:center}
+@media print{
+  body *{visibility:hidden!important}
+  #tab-relatorio,#tab-relatorio *{visibility:visible!important}
+  .no-print{display:none!important}
+  #tab-relatorio{position:absolute;left:0;top:0;width:100%}
+  .rlfolha{border:0;box-shadow:none;max-width:100%;margin:0;padding:0}
+  @page{size:A4;margin:12mm}
+  .rl-box canvas{max-height:150px}
+}
 /* ---- alertas ---- */
 .alerts{display:flex;flex-direction:column;gap:8px;margin-bottom:18px}
 .alert{display:flex;align-items:flex-start;gap:10px;padding:11px 14px;border-radius:10px;font-size:13px;line-height:1.45;border:1px solid}
@@ -448,6 +483,7 @@ tr:last-child td{border-bottom:0}
 <div class="topbar">
 <div class="nav" id="nav">
   <button data-tab="geral" class="on">Visão geral</button>
+  <button data-tab="relatorio">Relatório</button>
   <button data-tab="projetos">Projetos</button>
   <button data-tab="tarefas">Tarefas</button>
   <button data-tab="plan">Planejamento</button>
@@ -622,6 +658,17 @@ tr:last-child td{border-bottom:0}
     <div class="tkpag" id="tkPag"></div>
   </section>
 
+  <!-- ============ RELATÓRIO MENSAL (PDF) ============ -->
+  <section class="tab" id="tab-relatorio">
+    <div class="rlbar no-print">
+      <div class="section-title" style="margin:0">Relatório mensal</div>
+      <select id="rlMes" class="tksel"></select>
+      <select id="rlAno" class="tksel"></select>
+      <button id="rlGerar" class="pjf-btn prim">⎙ Gerar PDF</button>
+    </div>
+    <div id="rlFolha" class="rlfolha"><!-- montado por renderRelatorio() --></div>
+  </section>
+
   <!-- ============ PROJETOS ============ -->
   <section class="tab" id="tab-projetos">
     <div class="section-title">Projetos</div>
@@ -647,6 +694,7 @@ tr:last-child td{border-bottom:0}
         <button id="pjVLista" class="on" title="Lista">☰</button>
         <button id="pjVCard" title="Cartões">▦</button>
       </div>
+      <button id="pjExport" class="pjf-btn" title="Exportar para Excel">⬇ Exportar Excel</button>
     </div>
     <div id="pjLista"></div>
     <div id="pjVazio" class="tkvazio" style="display:none">Nenhum projeto encontrado com esses filtros.</div>
@@ -925,7 +973,7 @@ const EXCL_ETAPA_GRAF=["ENTREGA","REUNIAO PL"];    // fora do grafico de entrega
 const TABS=["PROJETOS","TAREFAS","HORAS","ERROS","METAS","METAS_PESSOAS","PADRAO_ETAPAS","PLANEJAMENTO_ANUAL","AUSENCIAS","APROVACAO"];
 
 const SPEC={
- PROJETOS:{id:["id"],nome:["projeto"],padrao:["padrao"],fase:["fase"],status:["status"],
+ PROJETOS:{id:["id"],nome:["projeto"],franq:["franqueado","franqueado / resumo","franqueado resumo","resumo"],padrao:["padrao"],fase:["fase"],status:["status"],
            qtdQuadras:["qtd quadras","quadras","numero de quadras"],estac:["estac","estacionamento"],
            iniPlan:["inicio planej"],fimPlan:["fim planej"],iniReal:["inicio real"],fimReal:["fim real"],
            atraso:["dias de atraso"],anoIni:["ano inicio"],mesIni:["mes inicio"],
@@ -1155,6 +1203,120 @@ function pf(r,f){const c=COL.PROJETOS||{};
   return noPeriodo(r,f);}
 
 /* ============ RENDER PRINCIPAL ============ */
+/* ============ RELATÓRIO MENSAL (PDF) ============ */
+var RL = { mes: hoje.getMonth()+1, ano: hoje.getFullYear() };
+
+function rlMontarSeletores(){
+  var sm=document.getElementById("rlMes"), sa=document.getElementById("rlAno");
+  if(sm && !sm.options.length){
+    for(var m=1;m<=12;m++){ var o=document.createElement("option"); o.value=m; o.textContent=MESESL[m-1]; if(m===RL.mes)o.selected=true; sm.appendChild(o); }
+  }
+  if(sa && !sa.options.length){
+    var yA=hoje.getFullYear();
+    for(var y=yA+1;y>=yA-2;y--){ var o2=document.createElement("option"); o2.value=y; o2.textContent=y; if(y===RL.ano)o2.selected=true; sa.appendChild(o2); }
+  }
+}
+
+/* coleta os dados do mês/ano escolhido */
+function rlDados(){
+  var ct=COL.TAREFAS||{}, cp=COL.PROJETOS||{};
+  var mes=RL.mes, ano=RL.ano;
+  var noMes=function(d){ return d && d.getMonth()+1===mes && d.getFullYear()===ano; };
+
+  /* entregas do mês = tarefas concluídas (fim real no mês) */
+  var entregas=[];       // {pid,proj,etapa,resp,fase}
+  var porEtapa={}, porPessoa={};
+  (DADOS.TAREFAS||[]).forEach(function(r){
+    var fr=pdate(G(r,ct.fimReal));
+    if(!noMes(fr)) return;
+    if(KEY(G(r,ct.status)).indexOf("CONCLU")<0 && (Number(G(r,ct.pct))||0)<1) return;
+    var etapa=txt(G(r,ct.etapa)), proj=txt(G(r,ct.proj)), pid=txt(G(r,ct.idProj));
+    entregas.push({pid:pid,proj:proj,etapa:etapa,resp:txt(G(r,ct.resp))});
+    var ek=KEY(etapa); porEtapa[ek]=(porEtapa[ek]||0)+1;
+    respsDe(G(r,ct.resp)).forEach(function(p){ porPessoa[p]=(porPessoa[p]||0)+1; });
+  });
+
+  /* entradas de projeto no mês = projetos cujo início real caiu no mês */
+  var entradas=[];
+  (DADOS.PROJETOS||[]).forEach(function(r){
+    var ir=pdate(G(r,cp.iniReal));
+    if(noMes(ir)) entradas.push({pid:txt(G(r,cp.id)),proj:txt(G(r,cp.nome)),fase:txt(G(r,cp.fase))});
+  });
+
+  /* projetos concluídos (entregues) no mês = fim real no mês */
+  var concluidos=[];
+  (DADOS.PROJETOS||[]).forEach(function(r){
+    var fr=pdate(G(r,cp.fimReal));
+    if(noMes(fr)) concluidos.push({pid:txt(G(r,cp.id)),proj:txt(G(r,cp.nome))});
+  });
+
+  return {entregas:entregas, porEtapa:porEtapa, porPessoa:porPessoa, entradas:entradas, concluidos:concluidos};
+}
+
+function renderRelatorio(){
+  if(!document.getElementById("rlFolha")) return;
+  rlMontarSeletores();
+  var d=rlDados();
+  var totalEnt=d.entregas.length;
+  var nProj=(DADOS.PROJETOS||[]).length;
+
+  /* meta do mês (total da equipe) */
+  var fMeta={ano:String(RL.ano),mes:String(RL.mes)};
+  var metaTotal=0;
+  PESSOAS.forEach(function(p){ var m=metaPessoa(p.key,fMeta); if(m) metaTotal+=m; });
+
+  var per=MESESL[RL.mes-1]+" de "+RL.ano;
+
+  /* ---- KPIs ---- */
+  var kpis=[
+    ["ENTREGAS NO MÊS", totalEnt, "tarefas concluídas"],
+    ["PROJETOS ENTREGUES", d.concluidos.length, "finalizados no mês"],
+    ["ENTRADAS", d.entradas.length, "novos projetos"],
+    ["META DO MÊS", metaTotal||"—", metaTotal? "entregas planejadas":"sem meta"]
+  ];
+  var kpiHtml=kpis.map(function(k){
+    return '<div class="rl-kpi"><div class="n">'+k[1]+'</div><div class="k">'+k[0]+'</div><div class="s">'+k[2]+'</div></div>';
+  }).join("");
+
+  /* ---- listas por categoria (entregas agrupadas por fase-etapa) ---- */
+  function grupo(titulo, filtroFn){
+    var its=d.entregas.filter(filtroFn);
+    var corpo = its.length
+      ? '<ul>'+its.map(function(e){ return '<li><span class="b">'+escAspas(e.pid)+'</span> '+escAspas(e.proj)+'</li>'; }).join("")+'</ul>'
+      : '<div class="vazio">Nenhuma entrega.</div>';
+    return '<div class="rl-list"><h3>'+titulo+'</h3>'+corpo+'</div>';
+  }
+  var ek=function(e){ return KEY(e.etapa); };
+  var catExec = grupo("Executivo entregue", function(e){ return ek(e).indexOf("EXECUTIVO")>=0; });
+  var catAnte = grupo("Anteprojeto entregue", function(e){ return ek(e).indexOf("ANTEPROJETO")>=0 || ek(e).indexOf("APRESENTA")>=0; });
+  var catCompl= grupo("Complementares", function(e){ return ek(e).indexOf("COMPLEMENTAR")>=0; });
+  var catOutras=grupo("Outras etapas", function(e){ var k=ek(e); return k.indexOf("EXECUTIVO")<0 && k.indexOf("ANTEPROJETO")<0 && k.indexOf("APRESENTA")<0 && k.indexOf("COMPLEMENTAR")<0; });
+
+  var entradasHtml = d.entradas.length
+    ? '<ul>'+d.entradas.map(function(e){ return '<li><span class="b">'+escAspas(e.pid)+'</span> '+escAspas(e.proj)+'</li>'; }).join("")+'</ul>'
+    : '<div class="vazio">Nenhuma entrada no mês.</div>';
+
+  document.getElementById("rlFolha").innerHTML=
+    '<div class="rl-cab"><div><h1>Desempenho — Arquitetura</h1>'+
+      '<div class="sub">Fast Tennis · Gestão de Projetos</div></div>'+
+      '<div class="per">'+per+'</div></div>'+
+    '<div class="rl-kpis">'+kpiHtml+'</div>'+
+    '<div class="rl-graf">'+
+      '<div class="rl-box"><h3>Entregas por etapa</h3><canvas id="rlCanEtapa"></canvas></div>'+
+      '<div class="rl-box"><h3>Rendimento por pessoa</h3><canvas id="rlCanPessoa"></canvas></div>'+
+    '</div>'+
+    '<div class="rl-list"><h3>Entradas de projeto</h3>'+entradasHtml+'</div>'+
+    '<div class="rl-cats">'+catExec+catAnte+catCompl+catOutras+'</div>'+
+    '<div class="rl-foot">Gerado pelo painel de gestão em '+fmtdA(hoje)+' · dados de '+per+'</div>';
+
+  /* ---- gráficos ---- */
+  var etL=Object.keys(d.porEtapa).sort(function(a,b){return d.porEtapa[b]-d.porEtapa[a];});
+  var etV=etL.map(function(k){return d.porEtapa[k];});
+  if(etL.length) barrasH("rlCanEtapa", etL.map(cap), [{label:"Entregas",data:etV,backgroundColor:HEX.accent2,borderRadius:4}], false);
+  var pesL=Object.keys(d.porPessoa), pesV=pesL.map(function(k){return d.porPessoa[k];});
+  if(pesL.length) barras("rlCanPessoa", pesL.map(nomeDe), [{label:"Entregas",data:pesV,backgroundColor:HEX.accent,borderRadius:4}], false);
+}
+
 /* ============ MENU PROJETOS ============ */
 var PJ = { pag:1, view: (function(){ try{ return localStorage.getItem("pjView")||"lista"; }catch(e){ return "lista"; } })() };
 
@@ -1288,6 +1450,42 @@ function renderProjetos(){
     if(p) p.onclick=function(){ if(PJ.pag>1){PJ.pag--;renderProjetos();window.scrollTo({top:0,behavior:"smooth"});} };
     if(n) n.onclick=function(){ if(PJ.pag<npag){PJ.pag++;renderProjetos();window.scrollTo({top:0,behavior:"smooth"});} };
   }
+}
+
+/* exporta o resumo dos projetos (respeitando os filtros ativos) para Excel */
+function pjExportarExcel(){
+  if(typeof XLSX==="undefined"){ alert("A biblioteca de exportação ainda está carregando. Tente de novo em instantes."); return; }
+  var cp=COL.PROJETOS||{};
+  var lista=pjFiltrar();   // respeita busca/fase/padrão/atrasados atuais
+  var d=function(v){ var x=pdate(v); return x?fmtdA(x):""; };
+  var linhas=lista.map(function(r){
+    var id=txt(G(r,cp.id)), pr=pjProgresso_(id);
+    var o={
+      "ID": id,
+      "Projeto": txt(G(r,cp.nome)),
+      "Franqueado / Resumo": cp.franq>=0?txt(G(r,cp.franq)):"",
+      "Padrão": txt(G(r,cp.padrao)),
+      "Qtd Quadras": txt(G(r,cp.qtdQuadras)),
+      "Estacionamento": txt(G(r,cp.estac)),
+      "Área do lote (m²)": cp.area>=0?txt(G(r,cp.area)):"",
+      "Fase": txt(G(r,cp.fase)),
+      "Status": txt(G(r,cp.status)),
+      "Início Planej.": d(G(r,cp.iniPlan)),
+      "Fim Planej.": d(G(r,cp.fimPlan)),
+      "Início Real": d(G(r,cp.iniReal)),
+      "Fim Real": d(G(r,cp.fimReal)),
+      "Progresso": pr.pct+"% ("+pr.ok+"/"+pr.tot+")"
+    };
+    return o;
+  });
+  if(!linhas.length){ alert("Nenhum projeto para exportar com os filtros atuais."); return; }
+  var ws=XLSX.utils.json_to_sheet(linhas);
+  /* larguras de coluna amigáveis */
+  ws["!cols"]=[{wch:7},{wch:30},{wch:34},{wch:12},{wch:11},{wch:14},{wch:16},{wch:16},{wch:14},{wch:13},{wch:13},{wch:13},{wch:13},{wch:16}];
+  var wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,"Projetos");
+  var nome="FastTennis_Projetos_"+fmtdA(hoje).replace(/\//g,"-")+".xlsx";
+  XLSX.writeFile(wb,nome);
 }
 
 /* ficha expansível do projeto */
@@ -1680,7 +1878,7 @@ function render(){
     ? ln.map(l=>`<tr><td>${l.id}</td><td>${l.nome}</td><td>${l.fase}</td><td class="num"><span class="tag">${l.at}</span></td></tr>`).join("")
     : `<tr><td colspan="4" style="color:var(--muted)">Nenhum atrasado no filtro.</td></tr>`;
 
-  renderCalendario(f); renderCapacidade(); renderPlano(f); renderErros(f); renderPrevisao(proj); renderAlertas(g,f); renderAprovacao(f); renderTarefas(); renderProjetos();
+  renderCalendario(f); renderCapacidade(); renderPlano(f); renderErros(f); renderPrevisao(proj); renderAlertas(g,f); renderAprovacao(f); renderTarefas(); renderProjetos(); renderRelatorio();
 }
 
 /* ---- tempo medio do fluxo: ate executivo / ate complementares / com projeto legal ---- */
@@ -2757,12 +2955,12 @@ document.getElementById("nvTE").addEventListener("change",()=>{
 /* ---------- navegacao ---------- */
 function aplicarPapel(){
   const papel=USUARIO.papel||"leitor";
-  const TODAS=["equipe","prazos","plan","qual","aprov","tarefas","projetos"];
+  const TODAS=["equipe","prazos","plan","qual","aprov","tarefas","projetos","relatorio"];
   // decide quais ESCONDER conforme o papel (reversível: mostra/esconde, não remove)
   let esconder=[];
-  if(papel==="comite")            esconder=["equipe","prazos","plan","qual","tarefas","projetos"];
-  else if(papel==="engenharia")   esconder=["equipe","qual","aprov","projetos"];   // engenharia VÊ Tarefas, não Projetos
-  else if(!USUARIO.interno)       esconder=["equipe","qual","aprov","tarefas","projetos"];
+  if(papel==="comite")            esconder=["equipe","prazos","plan","qual","tarefas","projetos","relatorio"];
+  else if(papel==="engenharia")   esconder=["equipe","qual","aprov","projetos","relatorio"];
+  else if(!USUARIO.interno)       esconder=["equipe","qual","aprov","tarefas","projetos","relatorio"];
   // admin/editor: esconder=[] (veem tudo)
   TODAS.forEach(function(tab){
     const mostrar = esconder.indexOf(tab)<0;
@@ -2799,11 +2997,18 @@ document.getElementById("fClear").addEventListener("click",()=>{["fAno","fMes","
   el.addEventListener(ev,function(){ PJ.pag=1; renderProjetos(); });
 });
 (function(){
+  var rm=document.getElementById("rlMes"), ra=document.getElementById("rlAno"), rg=document.getElementById("rlGerar");
+  if(rm) rm.addEventListener("change",function(){ RL.mes=+rm.value; renderRelatorio(); });
+  if(ra) ra.addEventListener("change",function(){ RL.ano=+ra.value; renderRelatorio(); });
+  if(rg) rg.addEventListener("click",function(){ window.print(); });
+})();
+(function(){
   var vl=document.getElementById("pjVLista"), vc=document.getElementById("pjVCard");
   function setView(v){ PJ.view=v; try{ localStorage.setItem("pjView",v); }catch(e){} renderProjetos(); }
   if(vl) vl.addEventListener("click",function(){ setView("lista"); });
   if(vc) vc.addEventListener("click",function(){ setView("card"); });
   var fx=document.getElementById("pjFechar"); if(fx) fx.addEventListener("click",pjFecharFicha);
+  var ex=document.getElementById("pjExport"); if(ex) ex.addEventListener("click",pjExportarExcel);
   var ov=document.getElementById("pjFichaOv");
   if(ov) ov.addEventListener("click",function(e){ if(e.target.id==="pjFichaOv") pjFecharFicha(); });
 })();

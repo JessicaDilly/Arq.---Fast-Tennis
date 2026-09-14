@@ -240,7 +240,7 @@ tr:last-child td{border-bottom:0}
 @media(max-width:760px){.pjrow{flex-wrap:wrap}.pjprog{width:100%}}
 /* ===== Relatório mensal (PDF) ===== */
 .rlbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:16px}
-.rlfolha{background:#fff;max-width:820px;margin:0 auto;padding:28px 32px;border:1px solid var(--line2);border-radius:12px;box-shadow:0 2px 16px rgba(15,30,36,.06)}
+.rlfolha{background:#fff;max-width:1040px;margin:0 auto;padding:24px 30px;border:1px solid var(--line2);border-radius:12px;box-shadow:0 2px 16px rgba(15,30,36,.06)}
 .rl-cab{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid var(--accent);padding-bottom:12px;margin-bottom:18px}
 .rl-cab h1{font-size:22px;margin:0;letter-spacing:-.4px;color:var(--accent)}
 .rl-cab .sub{font-size:12px;color:var(--muted);margin-top:2px}
@@ -280,12 +280,17 @@ ul.prev .muted{color:var(--muted);font-size:11px}
   body *{visibility:hidden!important}
   #tab-relatorio,#tab-relatorio *{visibility:visible!important}
   .no-print{display:none!important}
+  /* imprime SÓ o relatório, em PAISAGEM (formato slide/PowerPoint) */
   #tab-relatorio{position:absolute;left:0;top:0;width:100%}
   .rlfolha{border:0;box-shadow:none;max-width:100%;margin:0;padding:0}
-  @page{size:A4;margin:12mm}
+  @page{size:A4 landscape;margin:10mm}
+  .rl-cats{grid-template-columns:1fr 1fr 1fr!important}
   .rl-box canvas{max-height:150px}
-  .rl-break{break-before:page;page-break-before:always}
-  .rl-page{margin-bottom:0}
+  .rl-page{page-break-after:always;margin-bottom:0}
+  .rl-page:last-child{page-break-after:auto}
+  .rl-break{break-before:auto;page-break-before:auto}   /* já quebramos via page-break-after */
+  /* neutraliza qualquer regra que force outras abas a aparecer */
+  .tab:not(#tab-relatorio){display:none!important}
 }
 /* ---- alertas ---- */
 .alerts{display:flex;flex-direction:column;gap:8px;margin-bottom:18px}
@@ -490,11 +495,7 @@ ul.prev .muted{color:var(--muted);font-size:11px}
 @media print{
   #idxBt,#idx,#idxOv,#mdOv,#acBt,#acOv,#nvBt,#nvOv{display:none!important}
   header button,.nav,.filters,#btPdf{display:none!important}
-  .tab{display:block!important;page-break-before:always}
-  .tab:first-of-type{page-break-before:auto}
   body{background:#fff}
-  .panel,.card{box-shadow:none;border-color:#DDD}
-  .section-title{margin-top:14px}
 }
 </style>
 </head>

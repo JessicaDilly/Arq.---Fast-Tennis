@@ -162,12 +162,12 @@ tr:last-child td{border-bottom:0}
 .tksel{padding:9px 10px;border:1px solid var(--line2);border-radius:8px;font-family:inherit;font-size:13px;color:var(--ink);background:#fff;cursor:pointer}
 .tkchk{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--muted);cursor:pointer;white-space:nowrap}
 .tkcount{font-size:12px;color:var(--muted);margin-left:auto;white-space:nowrap}
-.tkwrap{border:1px solid var(--line2);border-radius:10px;overflow:hidden;background:#fff}
+.tkwrap{border:1px solid var(--line2);border-radius:10px;overflow-x:auto;background:#fff}
 .tktab{width:100%;border-collapse:collapse;font-size:13px}
 .tktab thead th{text-align:left;padding:11px 12px;background:var(--line);color:var(--muted);font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;white-space:nowrap}
 .tktab tbody td{padding:10px 12px;border-top:1px solid var(--line2);vertical-align:middle}
 .tktab tbody tr:hover{background:var(--line)}
-.tktab .tkacts{text-align:right;white-space:nowrap}
+.tktab .tkacts{text-align:right;white-space:nowrap;min-width:88px}
 .tkpid{font-weight:700;color:var(--accent)}
 .tkbtn{border:1px solid var(--line2);background:#fff;border-radius:6px;padding:5px 10px;font-size:12px;font-family:inherit;cursor:pointer;color:var(--ink);margin-left:4px}
 .tkbtn:hover{border-color:var(--accent2);color:var(--accent)}
@@ -213,7 +213,7 @@ tr:last-child td{border-bottom:0}
 /* ficha modal */
 #pjFichaOv{position:fixed;inset:0;background:rgba(15,30,36,.4);z-index:70;display:none;align-items:center;justify-content:center;padding:20px}
 #pjFichaOv.on{display:flex}
-#pjFicha{background:#fff;border-radius:16px;width:min(720px,100%);max-height:90vh;overflow-y:auto;padding:24px;box-shadow:0 18px 50px rgba(15,30,36,.3);position:relative}
+#pjFicha{background:#fff;border-radius:16px;width:min(860px,100%);max-height:90vh;overflow-y:auto;padding:24px;box-shadow:0 18px 50px rgba(15,30,36,.3);position:relative}
 #pjFechar{position:absolute;top:16px;right:18px;background:none;border:0;font-size:24px;line-height:1;color:var(--muted);cursor:pointer}
 #pjFechar:hover{color:var(--ink)}
 .pjf-head{display:flex;align-items:center;gap:12px;margin-bottom:4px}
@@ -245,7 +245,7 @@ tr:last-child td{border-bottom:0}
 .rl-cab h1{font-size:22px;margin:0;letter-spacing:-.4px;color:var(--accent)}
 .rl-cab .sub{font-size:12px;color:var(--muted);margin-top:2px}
 .rl-cab .per{font-size:14px;font-weight:700;color:var(--ink);text-align:right}
-.rl-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px}
+.rl-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:18px}
 .rl-kpi{border:1px solid var(--line2);border-radius:10px;padding:11px 13px;background:var(--line)}
 .rl-kpi .n{font-size:24px;font-weight:800;line-height:1;color:var(--accent)}
 .rl-kpi .k{font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:700;margin-top:5px}
@@ -255,13 +255,14 @@ tr:last-child td{border-bottom:0}
 .rl-box h3{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin:0 0 10px;font-weight:700}
 .rl-box canvas{max-height:180px}
 .rl-list{margin-bottom:16px}
-.rl-list h3{font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--accent);margin:0 0 8px;font-weight:700;border-bottom:1px solid var(--line2);padding-bottom:5px}
+.rl-list h3{font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--accent);margin:0 0 8px;font-weight:700;border-bottom:1px solid var(--line2);padding-bottom:5px;min-height:16px}
 .rl-list ul{margin:0;padding:0 0 0 2px;list-style:none}
-.rl-list li{font-size:12.5px;padding:3px 0;color:var(--ink);display:flex;gap:8px}
-.rl-list li .b{color:var(--accent2);font-weight:700}
+.rl-list li{font-size:12.5px;padding:3px 0;color:var(--ink);display:flex;gap:8px;align-items:baseline}
+.rl-list li .b{color:var(--accent2);font-weight:700;min-width:46px;display:inline-block}
 .rl-list .vazio{font-size:12px;color:var(--muted);font-style:italic}
-.rl-cats{columns:2;column-gap:24px}
-.rl-cats .rl-list{break-inside:avoid}
+.rl-cats{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
+.rl-cats .rl-list{break-inside:avoid;border:1px solid var(--line2);border-radius:8px;padding:10px 12px;margin:0}
+.rl-cats .rl-list h3{margin-top:0}
 .rl-foot{margin-top:16px;padding-top:10px;border-top:1px solid var(--line2);font-size:10px;color:var(--muted);text-align:center}
 .rl-page{margin-bottom:24px}
 .rl-sec{margin-bottom:18px}
@@ -846,7 +847,6 @@ ul.prev .muted{color:var(--muted);font-size:11px}
     <div class="nvsec">Dados da obra</div>
     <div class="fld"><label>Endereço da obra</label><input type="text" id="nvEEndObra" maxlength="120"></div>
     <div class="g2">
-      <div class="fld"><label>Área do terreno (m²)</label><input type="text" id="nvEAreaTer" maxlength="20"></div>
       <div class="fld"><label>Piso da quadra</label><input type="text" id="nvEPiso" maxlength="40"></div>
     </div>
     <div class="fld"><label>Tipo de edificação</label><input type="text" id="nvETipoEd" maxlength="60"></div>
@@ -1018,7 +1018,7 @@ const SPEC={
            iniPlan:["inicio planej"],fimPlan:["fim planej"],iniReal:["inicio real"],fimReal:["fim real"],
            atraso:["dias de atraso"],anoIni:["ano inicio"],mesIni:["mes inicio"],
            anoFim:["ano fim real"],mesFim:["mes fim real"],area:["area do lote","area","area m2","area (m2)"],
-           endObra:["endereco da obra","endereco obra"],areaTerreno:["area do terreno","area terreno"],
+           endObra:["endereco da obra","endereco obra"],
            piso:["piso da quadra","piso"],tipoEdif:["tipo de edificacao","tipo edificacao"],
            fqNome:["franqueado - nome","franqueado nome"],fqEnd:["franqueado - endereco","franqueado endereco"],
            fqCpf:["franqueado - cpf","franqueado cpf"],fqTel:["franqueado - telefone","franqueado telefone"],
@@ -1323,12 +1323,20 @@ function renderRelatorio(){
     ["ENTRADAS", d.entradas.length, "novos projetos"],
     ["META DO MÊS", metaTotal||"—", metaTotal? "entregas planejadas":"sem meta"]
   ];
+  /* atingimento da meta (realizado / meta) */
+  var pctMeta = metaTotal ? Math.round(totalEnt/metaTotal*100) : null;
+  if(pctMeta!=null){
+    kpis.push(["ATINGIMENTO", pctMeta+"%", (totalEnt>=metaTotal?"meta batida ✓":"em relação à meta")]);
+  }
   var kpiHtml=kpis.map(function(k){ return '<div class="rl-kpi"><div class="n">'+k[1]+'</div><div class="k">'+k[0]+'</div><div class="s">'+k[2]+'</div></div>'; }).join("");
 
   /* lista simples (ID + projeto) p/ entradas e categorias objetivas */
   function listaSimples(its){
-    return its.length ? '<ul>'+its.map(function(e){ return '<li><span class="b">'+escAspas(e.pid)+'</span> '+escAspas(e.proj)+'</li>'; }).join("")+'</ul>'
-                      : '<div class="vazio">Nenhuma.</div>';
+    /* dedup por projeto: um projeto aparece uma vez por categoria, mesmo com várias tarefas/pessoas */
+    var vis={}, uniq=[];
+    its.forEach(function(e){ if(!vis[e.pid]){ vis[e.pid]=1; uniq.push(e); } });
+    return uniq.length ? '<ul>'+uniq.map(function(e){ return '<li><span class="b">'+escAspas(e.pid)+'</span> '+escAspas(e.proj)+'</li>'; }).join("")+'</ul>'
+                       : '<div class="vazio">Nenhuma.</div>';
   }
   function catSimples(titulo,filtro){ return '<div class="rl-list"><h3>'+titulo+'</h3>'+listaSimples(d.entregas.filter(filtro))+'</div>'; }
 
@@ -1357,7 +1365,12 @@ function renderRelatorio(){
 
   /* PREVISTAS NO MÊS: por etapa, com o projeto e situação */
   var prevPorEtapa={};
-  d.previstas.forEach(function(p){ var k=KEY(p.etapa)||"OUTRA"; (prevPorEtapa[k]=prevPorEtapa[k]||[]).push(p); });
+  var ETAPAS_FORA=["APROVACAO FRANQUEADO","REUNIAO FORNECEDOR","APROVACAO","APRESENTACAO","APRESENTACAO ANTEPROJETO"];
+  d.previstas.forEach(function(p){
+    var k=KEY(p.etapa)||"OUTRA";
+    if(ETAPAS_FORA.some(function(x){ return k.indexOf(x)>=0; })) return;   // remove etapas pedidas
+    (prevPorEtapa[k]=prevPorEtapa[k]||[]).push(p);
+  });
   var ordemEt=Object.keys(prevPorEtapa).sort(function(a,b){ return (ORDEM_ETAPAS[a]||99)-(ORDEM_ETAPAS[b]||99); });
   var prevHtml = d.previstas.length
     ? ordemEt.map(function(k){
@@ -1559,7 +1572,6 @@ function pjBlocoObraFranq(row,cp){
   function val(k){ return (cp[k]!=null && cp[k]>=0) ? txt(G(row,cp[k])) : ""; }
   var obra=[
     ["Endereço da obra", val("endObra")],
-    ["Área do terreno", val("areaTerreno")],
     ["Qtd de quadras", txt(G(row,cp.qtdQuadras))],
     ["Estacionamento", txt(G(row,cp.estac))],
     ["Piso da quadra", val("piso")],
@@ -3002,7 +3014,7 @@ function carregarProjetoEdicao(){
   document.getElementById("nvEIni").value = di?di.getFullYear()+"-"+("0"+(di.getMonth()+1)).slice(-2)+"-"+("0"+di.getDate()).slice(-2):"";
   /* campos novos de obra/franqueado (só preenche se a coluna existir) */
   function setV(elId, key){ var el=document.getElementById(elId); if(el) el.value = (cp[key]!=null&&cp[key]>=0)?txt(G(r,cp[key])):""; }
-  setV("nvEEndObra","endObra"); setV("nvEAreaTer","areaTerreno"); setV("nvEPiso","piso"); setV("nvETipoEd","tipoEdif");
+  setV("nvEEndObra","endObra"); setV("nvEPiso","piso"); setV("nvETipoEd","tipoEdif");
   setV("nvEFqNome","fqNome"); setV("nvEFqEnd","fqEnd"); setV("nvEFqCpf","fqCpf"); setV("nvEFqTel","fqTel"); setV("nvEFqEmail","fqEmail");
 }
 function acharCol(cmap,nomes){ for(const n of nomes) if(cmap[n]) return cmap[n]; return 0; }
@@ -3019,7 +3031,6 @@ function salvarEdicaoProjeto(){
     area:document.getElementById("nvEArea").value,
     iniPlan:iso2br(document.getElementById("nvEIni").value),
     endObra:document.getElementById("nvEEndObra").value.trim(),
-    areaTerreno:document.getElementById("nvEAreaTer").value.trim(),
     piso:document.getElementById("nvEPiso").value.trim(),
     tipoEdif:document.getElementById("nvETipoEd").value.trim(),
     fqNome:document.getElementById("nvEFqNome").value.trim(),

@@ -264,6 +264,36 @@ tr:last-child td{border-bottom:0}
 .rl-cats .rl-list{break-inside:avoid;border:1px solid var(--line2);border-radius:8px;padding:10px 12px;margin:0}
 .rl-cats .rl-list h3{margin-top:0}
 .rl-foot{margin-top:16px;padding-top:10px;border-top:1px solid var(--line2);font-size:10px;color:var(--muted);text-align:center}
+/* faixa de status no topo da pág 1 */
+.rl-faixa{height:6px;border-radius:6px 6px 0 0;margin:-24px -30px 16px}
+.rl-status{font-size:11px;font-weight:700;margin-top:3px}
+.rl-cab-sec{border-bottom:2px solid var(--accent2)}
+.rl-cab-sec h1{font-size:18px}
+/* análises (3 cards) */
+.rl-analise{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:18px}
+.rl-analise .rl-box{padding:12px 14px}
+/* saúde da carteira */
+.rl-saude-barra{display:flex;height:20px;border-radius:6px;overflow:hidden;margin-bottom:8px}
+.rl-saude-barra .seg.verde{background:#3B8C6E}
+.rl-saude-barra .seg.vermelho{background:#C2554F}
+.rl-saude-leg{display:flex;flex-wrap:wrap;gap:12px;font-size:11.5px;color:var(--ink)}
+.rl-saude-leg i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:3px;vertical-align:middle}
+.rl-saude-leg b{font-weight:700}
+/* projetos parados */
+.rl-parados{list-style:none;padding:0;margin:0}
+.rl-parados li{font-size:12px;padding:3px 0;display:flex;justify-content:space-between;gap:8px;align-items:baseline;border-bottom:1px dotted var(--line2)}
+.rl-parados .dias{font-size:10.5px;color:var(--red);font-weight:700;white-space:nowrap}
+.rl-parados .b{color:var(--accent2);font-weight:700;min-width:44px;display:inline-block}
+/* prazo médio */
+.rl-prazo{list-style:none;padding:0;margin:0}
+.rl-prazo li{font-size:12px;padding:3px 0;display:flex;justify-content:space-between;border-bottom:1px dotted var(--line2)}
+.rl-prazo .b{font-weight:700;color:var(--accent)}
+/* 4 colunas de categorias na pág 2 */
+.rl-cats4{grid-template-columns:1fr 1fr 1fr 1fr}
+.rl-outras{columns:2;column-gap:18px}
+.rl-outras .rl-proj{break-inside:avoid}
+/* datas nas previstas */
+ul.prev .dt{font-size:10.5px;color:var(--muted);font-weight:600;min-width:74px;display:inline-block}
 .rl-page{margin-bottom:24px}
 .rl-sec{margin-bottom:18px}
 .rl-sec h2{font-size:14px;color:var(--accent);margin:0 0 12px;padding-bottom:6px;border-bottom:2px solid var(--accent2)}
@@ -1284,13 +1314,14 @@ function rlDados(){
     pessoasDe(G(r,ct.resp)).forEach(function(p){ if(!vis[p]){ vis[p]=1; porPessoa[p]=(porPessoa[p]||0)+1; } });
   });
 
-  /* previstas no mês = tarefas com FIM PLANEJADO no mês (independe de concluída) */
+  /* previstas no mês = tarefas com FIM PLANEJADO no mês (com a DATA) */
   var previstas=[];
   (DADOS.TAREFAS||[]).forEach(function(r){
     var fp=pdate(G(r,ct.fimPlan));
     if(!noMes(fp)) return;
     previstas.push({pid:txt(G(r,ct.idProj)),proj:txt(G(r,ct.proj)),etapa:txt(G(r,ct.etapa)),
-                    tarefa:txt(G(r,ct.tarefa)), concluida: (KEY(G(r,ct.status)).indexOf("CONCLU")>=0 || (Number(G(r,ct.pct))||0)>=1)});
+                    tarefa:txt(G(r,ct.tarefa)), prazo:fp,
+                    concluida: (KEY(G(r,ct.status)).indexOf("CONCLU")>=0 || (Number(G(r,ct.pct))||0)>=1)});
   });
 
   var entradas=[];
@@ -1304,7 +1335,69 @@ function rlDados(){
     if(noMes(fr)) concluidos.push({pid:txt(G(r,cp.id)),proj:txt(G(r,cp.nome))});
   });
 
-  return {entregas:entregas, porEtapa:porEtapa, porPessoa:porPessoa, entradas:entradas, concluidos:concluidos, previstas:previstas};
+  /* ===== ANÁLISE 1: comparativo com o mês anterior (entregas concluídas) ===== */
+  var mesAnt = mes===1?12:mes-1, anoAnt = mes===1?ano-1:ano;
+  var entregasMesAnt=0;
+  (DADOS.TAREFAS||[]).forEach(function(r){
+    var fr=pdate(G(r,ct.fimReal));
+    if(fr && fr.getMonth()+1===mesAnt && fr.getFullYear()===anoAnt &&
+       (KEY(G(r,ct.status)).indexOf("CONCLU")>=0 || (Number(G(r,ct.pct))||0)>=1)) entregasMesAnt++;
+  });
+  var variacao = entregasMesAnt>0 ? Math.round((entregas.length-entregasMesAnt)/entregasMesAnt*100) : null;
+
+  /* ===== ANÁLISE 2: saúde da carteira (projetos ativos no prazo × atrasados) ===== */
+  function projTemAtraso(pid){
+    return (DADOS.TAREFAS||[]).some(function(r){
+      if(txt(G(r,ct.idProj))!==pid) return false;
+      var st=KEY(G(r,ct.status));
+      if(st.indexOf("ATRAS")>=0) return true;
+      var fp=pdate(G(r,ct.fimPlan)), concl=st.indexOf("CONCLU")>=0||(Number(G(r,ct.pct))||0)>=1;
+      return fp && !concl && fp<hoje;
+    });
+  }
+  var ativos=0, noPrazo=0, atrasados=0;
+  (DADOS.PROJETOS||[]).forEach(function(r){
+    var fase=KEY(G(r,cp.fase));
+    if(fase.indexOf("CONCLU")>=0 || fase.indexOf("CANCEL")>=0 || fase.indexOf("PAUS")>=0) return; // só ativos
+    ativos++;
+    if(projTemAtraso(txt(G(r,cp.id)))) atrasados++; else noPrazo++;
+  });
+
+  /* ===== ANÁLISE 3: prazo médio de entrega por etapa (dias entre início real e fim real) ===== */
+  var somaDur={}, contDur={};
+  (DADOS.TAREFAS||[]).forEach(function(r){
+    var fr=pdate(G(r,ct.fimReal)); if(!noMes(fr)) return;
+    var ir=pdate(G(r,ct.iniReal)); if(!ir) return;
+    var dias=Math.round((fr-ir)/86400000); if(dias<0) return;
+    var ek=KEY(G(r,ct.etapa));
+    somaDur[ek]=(somaDur[ek]||0)+dias; contDur[ek]=(contDur[ek]||0)+1;
+  });
+  var prazoMedio=Object.keys(somaDur).map(function(k){ return {etapa:k, media:Math.round(somaDur[k]/contDur[k])}; })
+                                     .sort(function(a,b){ return b.media-a.media; });
+
+  /* ===== ANÁLISE 4: projetos parados (ativos sem entrega há +30 dias) ===== */
+  var parados=[];
+  (DADOS.PROJETOS||[]).forEach(function(r){
+    var fase=KEY(G(r,cp.fase)), pid=txt(G(r,cp.id));
+    if(fase.indexOf("CONCLU")>=0 || fase.indexOf("CANCEL")>=0 || fase.indexOf("PAUS")>=0) return;
+    /* última data real (início ou fim) de qualquer tarefa do projeto */
+    var ultima=null;
+    (DADOS.TAREFAS||[]).forEach(function(t){
+      if(txt(G(t,ct.idProj))!==pid) return;
+      [pdate(G(t,ct.fimReal)),pdate(G(t,ct.iniReal))].forEach(function(d){ if(d && (!ultima||d>ultima)) ultima=d; });
+    });
+    if(ultima){
+      var diasParado=Math.round((hoje-ultima)/86400000);
+      if(diasParado>=30) parados.push({pid:pid, proj:txt(G(r,cp.nome)), dias:diasParado});
+    }
+  });
+  parados.sort(function(a,b){ return b.dias-a.dias; });
+
+  return {entregas:entregas, porEtapa:porEtapa, porPessoa:porPessoa, entradas:entradas,
+          concluidos:concluidos, previstas:previstas,
+          entregasMesAnt:entregasMesAnt, variacao:variacao,
+          ativos:ativos, noPrazo:noPrazo, atrasados:atrasados,
+          prazoMedio:prazoMedio, parados:parados};
 }
 
 function renderRelatorio(){
@@ -1316,104 +1409,141 @@ function renderRelatorio(){
   var metaTotal=0; PESSOAS.forEach(function(p){ var m=metaPessoa(p.key,fMeta); if(m) metaTotal+=m; });
   var per=MESESL[RL.mes-1]+" de "+RL.ano;
   var ek=function(e){ return KEY(e.etapa); };
+  var quem=(USUARIO.nome||"—");
 
-  /* KPIs */
+  /* ---- faixa de status (semáforo da carteira) ---- */
+  var pctAtras = d.ativos? Math.round(d.atrasados/d.ativos*100) : 0;
+  var statusCor, statusTxt;
+  if(pctAtras<=15){ statusCor=HEX.green; statusTxt="Carteira saudável"; }
+  else if(pctAtras<=35){ statusCor=HEX.amber; statusTxt="Atenção a prazos"; }
+  else { statusCor=HEX.red; statusTxt="Carteira sob pressão"; }
+
+  /* ---- variação vs mês anterior ---- */
+  var varTxt, varCor;
+  if(d.variacao==null){ varTxt="—"; varCor="var(--muted)"; }
+  else if(d.variacao>0){ varTxt="▲ "+d.variacao+"%"; varCor=HEX.green; }
+  else if(d.variacao<0){ varTxt="▼ "+Math.abs(d.variacao)+"%"; varCor=HEX.red; }
+  else { varTxt="= 0%"; varCor="var(--muted)"; }
+
+  /* ---- KPIs ---- */
+  var pctMeta = metaTotal ? Math.round(totalEnt/metaTotal*100) : null;
   var kpis=[
-    ["ENTREGAS NO MÊS", totalEnt, "tarefas concluídas"],
+    ["ENTREGAS NO MÊS", totalEnt, "<span style=\"color:"+varCor+";font-weight:700\">"+varTxt+"</span> vs mês anterior"],
     ["PROJETOS ENTREGUES", d.concluidos.length, "finalizados no mês"],
     ["ENTRADAS", d.entradas.length, "novos projetos"],
-    ["META DO MÊS", metaTotal||"—", metaTotal? "entregas planejadas":"sem meta"]
+    ["ATINGIMENTO", pctMeta!=null?(pctMeta+"%"):"—", metaTotal?(totalEnt>=metaTotal?"meta batida ✓":"da meta de "+metaTotal):"sem meta definida"]
   ];
-  /* atingimento da meta (realizado / meta) */
-  var pctMeta = metaTotal ? Math.round(totalEnt/metaTotal*100) : null;
-  if(pctMeta!=null){
-    kpis.push(["ATINGIMENTO", pctMeta+"%", (totalEnt>=metaTotal?"meta batida ✓":"em relação à meta")]);
-  }
   var kpiHtml=kpis.map(function(k){ return '<div class="rl-kpi"><div class="n">'+k[1]+'</div><div class="k">'+k[0]+'</div><div class="s">'+k[2]+'</div></div>'; }).join("");
 
-  /* lista simples (ID + projeto) p/ entradas e categorias objetivas */
+  /* ---- saúde da carteira (barra no prazo x atrasado) ---- */
+  var pNoPrazo = d.ativos? Math.round(d.noPrazo/d.ativos*100):0;
+  var carteiraHtml=
+    '<div class="rl-saude">'+
+      '<div class="rl-saude-barra">'+
+        '<div class="seg verde" style="width:'+pNoPrazo+'%"></div>'+
+        '<div class="seg vermelho" style="width:'+(100-pNoPrazo)+'%"></div>'+
+      '</div>'+
+      '<div class="rl-saude-leg">'+
+        '<span><i style="background:'+HEX.green+'"></i> No prazo: <b>'+d.noPrazo+'</b></span>'+
+        '<span><i style="background:'+HEX.red+'"></i> Atrasados: <b>'+d.atrasados+'</b></span>'+
+        '<span style="color:var(--muted)">de '+d.ativos+' projetos ativos</span>'+
+      '</div>'+
+    '</div>';
+
+  /* ---- projetos parados (top 5) ---- */
+  var paradosHtml = d.parados.length
+    ? '<ul class="rl-parados">'+d.parados.slice(0,5).map(function(p){
+        return '<li><span class="b">'+escAspas(p.pid)+'</span> '+escAspas(p.proj)+' <span class="dias">'+p.dias+' dias parado</span></li>'; }).join("")+'</ul>'
+    : '<div class="vazio">Nenhum projeto parado há mais de 30 dias. 👍</div>';
+
+  /* ---- prazo médio por etapa (top 5) ---- */
+  var prazoHtml = d.prazoMedio.length
+    ? '<ul class="rl-prazo">'+d.prazoMedio.slice(0,5).map(function(p){
+        return '<li><span>'+escAspas(cap(p.etapa))+'</span><span class="b">'+p.media+' dias</span></li>'; }).join("")+'</ul>'
+    : '<div class="vazio">Sem dados de duração no mês.</div>';
+
+  /* ============ listas de detalhe (dedup por projeto) ============ */
   function listaSimples(its){
-    /* dedup por projeto: um projeto aparece uma vez por categoria, mesmo com várias tarefas/pessoas */
-    var vis={}, uniq=[];
+    var vis={},uniq=[];
     its.forEach(function(e){ if(!vis[e.pid]){ vis[e.pid]=1; uniq.push(e); } });
     return uniq.length ? '<ul>'+uniq.map(function(e){ return '<li><span class="b">'+escAspas(e.pid)+'</span> '+escAspas(e.proj)+'</li>'; }).join("")+'</ul>'
                        : '<div class="vazio">Nenhuma.</div>';
   }
-  function catSimples(titulo,filtro){ return '<div class="rl-list"><h3>'+titulo+'</h3>'+listaSimples(d.entregas.filter(filtro))+'</div>'; }
-
+  function catSimples(t,f){ return '<div class="rl-list"><h3>'+t+'</h3>'+listaSimples(d.entregas.filter(f))+'</div>'; }
   var catExec = catSimples("Executivo entregue", function(e){ return ek(e).indexOf("EXECUTIVO")>=0; });
   var catAnte = catSimples("Anteprojeto entregue", function(e){ return ek(e).indexOf("ANTEPROJETO")>=0 || ek(e).indexOf("APRESENTA")>=0; });
   var catCompl= catSimples("Complementares", function(e){ return ek(e).indexOf("COMPLEMENTAR")>=0; });
   var entradasBox='<div class="rl-list"><h3>Entradas de projeto</h3>'+listaSimples(d.entradas)+'</div>';
 
-  /* OUTRAS ETAPAS: descreve o que foi feito, agrupando por projeto */
+  /* outras etapas agrupadas por projeto */
   var outras=d.entregas.filter(function(e){ var k=ek(e);
     return k.indexOf("EXECUTIVO")<0 && k.indexOf("ANTEPROJETO")<0 && k.indexOf("APRESENTA")<0 && k.indexOf("COMPLEMENTAR")<0; });
   var porProj={};
   outras.forEach(function(e){ var key=e.pid+"||"+e.proj; (porProj[key]=porProj[key]||[]).push(e); });
-  var outrasHtml;
-  if(!outras.length){ outrasHtml='<div class="vazio">Nenhuma.</div>'; }
-  else {
-    outrasHtml=Object.keys(porProj).map(function(key){
-      var parts=key.split("||"), pid=parts[0], proj=parts[1], its=porProj[key];
-      var itens=its.map(function(e){
-        var desc=e.tarefa && KEY(e.tarefa)!==KEY(e.etapa) ? cap(e.etapa)+" — "+e.tarefa : cap(e.etapa);
-        return '<li>'+escAspas(desc)+'</li>';
+  var outrasHtml = !outras.length ? '<div class="vazio">Nenhuma.</div>'
+    : Object.keys(porProj).map(function(key){
+        var parts=key.split("||"), its=porProj[key];
+        var itens=its.map(function(e){ var desc=e.tarefa && KEY(e.tarefa)!==KEY(e.etapa)?cap(e.etapa)+" — "+e.tarefa:cap(e.etapa); return '<li>'+escAspas(desc)+'</li>'; }).join("");
+        return '<div class="rl-proj"><div class="rl-proj-t"><span class="b">'+escAspas(parts[0])+'</span> '+escAspas(parts[1])+'</div><ul>'+itens+'</ul></div>';
       }).join("");
-      return '<div class="rl-proj"><div class="rl-proj-t"><span class="b">'+escAspas(pid)+'</span> '+escAspas(proj)+'</div><ul>'+itens+'</ul></div>';
-    }).join("");
-  }
 
-  /* PREVISTAS NO MÊS: por etapa, com o projeto e situação */
+  /* previstas por etapa, agora COM DATA */
   var prevPorEtapa={};
-  var ETAPAS_FORA=["APROVACAO FRANQUEADO","REUNIAO FORNECEDOR","APROVACAO","APRESENTACAO","APRESENTACAO ANTEPROJETO"];
-  d.previstas.forEach(function(p){
-    var k=KEY(p.etapa)||"OUTRA";
-    if(ETAPAS_FORA.some(function(x){ return k.indexOf(x)>=0; })) return;   // remove etapas pedidas
-    (prevPorEtapa[k]=prevPorEtapa[k]||[]).push(p);
-  });
+  var ETAPAS_FORA=["APROVACAO FRANQUEADO","REUNIAO FORNECEDOR","APROVACAO","APRESENTACAO"];
+  d.previstas.forEach(function(p){ var k=KEY(p.etapa)||"OUTRA";
+    if(ETAPAS_FORA.some(function(x){ return k.indexOf(x)>=0; })) return;
+    (prevPorEtapa[k]=prevPorEtapa[k]||[]).push(p); });
   var ordemEt=Object.keys(prevPorEtapa).sort(function(a,b){ return (ORDEM_ETAPAS[a]||99)-(ORDEM_ETAPAS[b]||99); });
-  var prevHtml = d.previstas.length
+  var prevHtml = ordemEt.length
     ? ordemEt.map(function(k){
         var its=prevPorEtapa[k];
+        its.sort(function(a,b){ return (a.prazo?a.prazo.getTime():0)-(b.prazo?b.prazo.getTime():0); });
         var li=its.map(function(p){
           var mark=p.concluida?'<span class="ok">✓</span>':'<span class="pend">•</span>';
-          return '<li>'+mark+' <span class="b">'+escAspas(p.pid)+'</span> '+escAspas(p.proj)+(p.tarefa&&KEY(p.tarefa)!==KEY(p.etapa)?' <span class="muted">('+escAspas(p.tarefa)+')</span>':'')+'</li>';
+          var dataTxt=p.prazo?'<span class="dt">'+fmtdA(p.prazo)+'</span>':'';
+          return '<li>'+mark+' '+dataTxt+' <span class="b">'+escAspas(p.pid)+'</span> '+escAspas(p.proj)+(p.tarefa&&KEY(p.tarefa)!==KEY(p.etapa)?' <span class="muted">('+escAspas(p.tarefa)+')</span>':'')+'</li>';
         }).join("");
         return '<div class="rl-list"><h3>'+cap(its[0].etapa)+'</h3><ul class="prev">'+li+'</ul></div>';
       }).join("")
     : '<div class="vazio">Nenhuma entrega prevista no mês.</div>';
 
-  var quem = (USUARIO.nome||"—");
-
   document.getElementById("rlFolha").innerHTML=
-    /* ---------- FOLHA 1 ---------- */
+    /* ===================== PÁGINA 1 — EXECUTIVA ===================== */
     '<div class="rl-page">'+
+      '<div class="rl-faixa" style="background:'+statusCor+'"></div>'+
       '<div class="rl-cab"><div><h1>Desempenho — Arquitetura</h1>'+
         '<div class="sub">Fast Tennis · Gestão de Projetos</div></div>'+
-        '<div class="per">'+per+'</div></div>'+
+        '<div class="per">'+per+'<div class="rl-status" style="color:'+statusCor+'">● '+statusTxt+'</div></div></div>'+
       '<div class="rl-kpis">'+kpiHtml+'</div>'+
       '<div class="rl-graf">'+
         '<div class="rl-box"><h3>Entregas por etapa</h3><canvas id="rlCanEtapa"></canvas></div>'+
         '<div class="rl-box"><h3>Rendimento por pessoa</h3><canvas id="rlCanPessoa"></canvas></div>'+
       '</div>'+
-      '<div class="rl-cats">'+entradasBox+catExec+catAnte+catCompl+'</div>'+
-      '<div class="rl-foot">Relatório gerado por '+escAspas(quem)+' em '+fmtdA(hoje)+' · dados de '+per+' · página 1 de 2</div>'+
+      '<div class="rl-analise">'+
+        '<div class="rl-box"><h3>Saúde da carteira</h3>'+carteiraHtml+'</div>'+
+        '<div class="rl-box"><h3>Prazo médio por etapa</h3>'+prazoHtml+'</div>'+
+        '<div class="rl-box"><h3>Projetos parados (+30 dias)</h3>'+paradosHtml+'</div>'+
+      '</div>'+
+      '<div class="rl-foot">Relatório gerado por '+escAspas(quem)+' em '+fmtdA(hoje)+' · dados de '+per+' · página 1</div>'+
     '</div>'+
-    /* ---------- FOLHA 2 ---------- */
-    '<div class="rl-page rl-break">'+
-      '<div class="rl-cab"><div><h1>Desempenho — Arquitetura</h1>'+
-        '<div class="sub">Detalhamento de entregas</div></div><div class="per">'+per+'</div></div>'+
-      '<div class="rl-sec"><h2>Outras etapas — o que foi feito</h2>'+outrasHtml+'</div>'+
-      '<div class="rl-sec"><h2>Entregas previstas no mês (por etapa)</h2><div class="rl-cats">'+prevHtml+'</div></div>'+
-      '<div class="rl-foot">Relatório gerado por '+escAspas(quem)+' em '+fmtdA(hoje)+' · dados de '+per+' · página 2 de 2</div>'+
+    /* ===================== PÁGINA 2 — ENTREGAS ===================== */
+    '<div class="rl-page">'+
+      '<div class="rl-cab rl-cab-sec"><h1>Entregas realizadas</h1><div class="per">'+per+'</div></div>'+
+      '<div class="rl-cats rl-cats4">'+entradasBox+catExec+catAnte+catCompl+'</div>'+
+      '<div class="rl-sec"><h2>Outras etapas — o que foi feito</h2><div class="rl-outras">'+outrasHtml+'</div></div>'+
+      '<div class="rl-foot">Relatório gerado por '+escAspas(quem)+' em '+fmtdA(hoje)+' · dados de '+per+' · página 2</div>'+
+    '</div>'+
+    /* ===================== PÁGINA 3 — PREVISTAS ===================== */
+    '<div class="rl-page">'+
+      '<div class="rl-cab rl-cab-sec"><h1>Entregas previstas no mês</h1><div class="per">'+per+'</div></div>'+
+      '<div class="rl-cats">'+prevHtml+'</div>'+
+      '<div class="rl-foot">Relatório gerado por '+escAspas(quem)+' em '+fmtdA(hoje)+' · dados de '+per+' · página 3</div>'+
     '</div>';
 
   /* gráficos */
   var etL=Object.keys(d.porEtapa).sort(function(a,b){return d.porEtapa[b]-d.porEtapa[a];});
   var etV=etL.map(function(k){return d.porEtapa[k];});
   if(etL.length) barrasH("rlCanEtapa", etL.map(cap), [{label:"Entregas",data:etV,backgroundColor:HEX.accent2,borderRadius:4}], false);
-  /* rendimento SÓ Pollyana, Jessica, Bruna (nessa ordem), engenharia já somada em Bruna */
   var fixos=["POLLYANA","JESSICA","BRUNA"];
   var pesV=fixos.map(function(k){return d.porPessoa[k]||0;});
   barras("rlCanPessoa", fixos.map(function(k){return cap(k);}), [{label:"Entregas",data:pesV,backgroundColor:HEX.accent,borderRadius:4}], false);

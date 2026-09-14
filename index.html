@@ -154,6 +154,7 @@ tr:last-child td{border-bottom:0}
 .nav button:hover{color:var(--ink)}
 .nav button.on{color:var(--accent);border-bottom-color:var(--accent)}
 .tab{display:none}.tab.on{display:block}
+.nvsec{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--accent);font-weight:700;margin:16px 0 8px;padding-bottom:5px;border-bottom:1px solid var(--line2)}
 /* ===== Menu Tarefas ===== */
 .tkbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:14px}
 .tkin{flex:1;min-width:220px;padding:9px 12px;border:1px solid var(--line2);border-radius:8px;font-family:inherit;font-size:13px;color:var(--ink);background:#fff}
@@ -219,6 +220,12 @@ tr:last-child td{border-bottom:0}
 .pjf-head .id{font-weight:700;color:var(--accent);font-size:14px}
 .pjf-head .fase{font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:var(--line);color:var(--muted)}
 .pjf-atraso{font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:#fbe6e4;color:#b3382f}
+.pjfeed-item{border-left:3px solid var(--accent2);padding:6px 12px;margin-bottom:8px;background:var(--line);border-radius:0 8px 8px 0}
+.pjfeed-meta{font-size:11px;color:var(--muted);margin-bottom:2px}
+.pjfeed-txt{font-size:13px;color:var(--ink);white-space:pre-wrap}
+.pjfeed-nova{display:flex;gap:8px;margin-top:10px;align-items:flex-start}
+.pjfeed-nova textarea{flex:1;padding:8px 10px;border:1px solid var(--line2);border-radius:8px;font-family:inherit;font-size:13px;resize:vertical;color:var(--ink)}
+.pjfeed-nova textarea:focus{outline:none;border-color:var(--accent2)}
 .pjf-nome{font-size:20px;font-weight:800;letter-spacing:-.3px;margin:0 0 16px}
 .pjf-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:18px}
 .pjf-cel{background:var(--line);border-radius:10px;padding:10px 12px}
@@ -836,6 +843,21 @@ ul.prev .muted{color:var(--muted);font-size:11px}
       <div class="fld"><label>Área do lote (m²)</label><input type="number" id="nvEArea" min="0" step="1"></div>
     </div>
     <div class="fld"><label>Início previsto</label><input type="date" id="nvEIni"></div>
+    <div class="nvsec">Dados da obra</div>
+    <div class="fld"><label>Endereço da obra</label><input type="text" id="nvEEndObra" maxlength="120"></div>
+    <div class="g2">
+      <div class="fld"><label>Área do terreno (m²)</label><input type="text" id="nvEAreaTer" maxlength="20"></div>
+      <div class="fld"><label>Piso da quadra</label><input type="text" id="nvEPiso" maxlength="40"></div>
+    </div>
+    <div class="fld"><label>Tipo de edificação</label><input type="text" id="nvETipoEd" maxlength="60"></div>
+    <div class="nvsec">Dados do franqueado (RRT)</div>
+    <div class="fld"><label>Nome</label><input type="text" id="nvEFqNome" maxlength="80"></div>
+    <div class="fld"><label>Endereço</label><input type="text" id="nvEFqEnd" maxlength="120"></div>
+    <div class="g2">
+      <div class="fld"><label>CPF</label><input type="text" id="nvEFqCpf" maxlength="18"></div>
+      <div class="fld"><label>Telefone</label><input type="text" id="nvEFqTel" maxlength="20"></div>
+    </div>
+    <div class="fld"><label>E-mail</label><input type="text" id="nvEFqEmail" maxlength="80"></div>
     <div class="prev">Só os campos que você alterar são gravados. As tarefas já criadas <b>não</b> são reprogramadas — mudar a data aqui ajusta o cadastro do projeto, não o cronograma existente.</div>
     <button class="acGo" id="nvEGo">Salvar alterações</button>
   </div>
@@ -939,6 +961,9 @@ const google = { script: { run: (function(){
     criarTarefa:["dadosJson","token"],
     editarProjeto:["dadosJson","token"],
     mudarFaseProjeto:["projId","fase","token"],
+    editarTarefa:["dadosJson","token"],
+    adicionarObservacao:["projId","texto","token"],
+    lerObservacoes:["projId","token"],
     decidirAprovacao:["refStr","status","observacao","token"]
   };
   function fazer(acao,args){
@@ -992,7 +1017,12 @@ const SPEC={
            qtdQuadras:["qtd quadras","quadras","numero de quadras"],estac:["estac","estacionamento"],
            iniPlan:["inicio planej"],fimPlan:["fim planej"],iniReal:["inicio real"],fimReal:["fim real"],
            atraso:["dias de atraso"],anoIni:["ano inicio"],mesIni:["mes inicio"],
-           anoFim:["ano fim real"],mesFim:["mes fim real"],area:["area do lote","area","area m2","area (m2)"]},
+           anoFim:["ano fim real"],mesFim:["mes fim real"],area:["area do lote","area","area m2","area (m2)"],
+           endObra:["endereco da obra","endereco obra"],areaTerreno:["area do terreno","area terreno"],
+           piso:["piso da quadra","piso"],tipoEdif:["tipo de edificacao","tipo edificacao"],
+           fqNome:["franqueado - nome","franqueado nome"],fqEnd:["franqueado - endereco","franqueado endereco"],
+           fqCpf:["franqueado - cpf","franqueado cpf"],fqTel:["franqueado - telefone","franqueado telefone"],
+           fqEmail:["franqueado - e-mail","franqueado email","franqueado - email"]},
  TAREFAS:{idProj:["id projeto","id"],proj:["projeto"],etapa:["etapa"],tarefa:["tarefa"],resp:["responsavel"],
           iniPlan:["inicio planej"],esforco:["esforco"],fimPlan:["fim planej"],iniReal:["inicio real"],
           fimReal:["fim real"],status:["status"],anoFim:["ano fim real"],mesFim:["mes fim real"]},
@@ -1524,6 +1554,34 @@ function renderProjetos(){
   }
 }
 
+/* monta os blocos de Dados da Obra e do Franqueado na ficha (p/ RRT) */
+function pjBlocoObraFranq(row,cp){
+  function val(k){ return (cp[k]!=null && cp[k]>=0) ? txt(G(row,cp[k])) : ""; }
+  var obra=[
+    ["Endereço da obra", val("endObra")],
+    ["Área do terreno", val("areaTerreno")],
+    ["Qtd de quadras", txt(G(row,cp.qtdQuadras))],
+    ["Estacionamento", txt(G(row,cp.estac))],
+    ["Piso da quadra", val("piso")],
+    ["Tipo de edificação", val("tipoEdif")]
+  ];
+  var franq=[
+    ["Nome", val("fqNome")],
+    ["Endereço", val("fqEnd")],
+    ["CPF", val("fqCpf")],
+    ["Telefone", val("fqTel")],
+    ["E-mail", val("fqEmail")]
+  ];
+  function grid(cels){
+    return '<div class="pjf-grid">'+cels.map(function(c){
+      return '<div class="pjf-cel"><div class="k">'+c[0]+'</div><div class="v">'+escAspas(c[1]||"—")+'</div></div>';
+    }).join("")+'</div>';
+  }
+  var ed = USUARIO.podeEditar ? '<button class="pjf-btn" id="pjfEditObra" style="margin-top:8px">Editar dados de obra/franqueado</button>' : '';
+  return '<div class="pjf-sec">Dados da obra</div>'+grid(obra)+
+         '<div class="pjf-sec">Dados do franqueado (RRT)</div>'+grid(franq)+ed;
+}
+
 /* exporta o resumo dos projetos (respeitando os filtros ativos) para Excel */
 function pjExportarExcel(){
   if(typeof XLSX==="undefined"){ alert("A biblioteca de exportação ainda está carregando. Tente de novo em instantes."); return; }
@@ -1589,10 +1647,15 @@ function pjAbrirFicha(pid){
   var linhasT=tarefas.map(function(t){
     var cls=statusClasse_(t.status), prazo=t.prazo?fmtdA(t.prazo):"—";
     var acts="";
+    var chave=encodeURIComponent(pid)+"|"+encodeURIComponent(t.etapa)+"|"+encodeURIComponent(t.tarefa);
     if(podeAgir && cls!=="ok"){
       var minha=!ehEng || respsDe(t.resp).indexOf("ENGENHARIA")>=0;
-      if(minha) acts='<button class="tkbtn ok" data-fc="'+encodeURIComponent(pid)+'|'+encodeURIComponent(t.etapa)+'|'+encodeURIComponent(t.tarefa)+'">✓</button>';
+      if(minha) acts+='<button class="tkbtn ok" title="Concluir" data-fc="'+chave+'">✓</button>';
     }
+    if(USUARIO.podeEditar)
+      acts+='<button class="tkbtn" title="Editar tarefa" data-fe="'+chave+'"'+
+            ' data-resp="'+encodeURIComponent(t.resp)+'"'+
+            ' data-prazo="'+(t.prazo?fmtdA(t.prazo):"")+'">✎</button>';
     return '<tr><td>'+escAspas(cap(t.etapa))+'</td><td>'+escAspas(t.tarefa)+'</td>'+
       '<td>'+escAspas(t.resp)+'</td><td>'+prazo+'</td>'+
       '<td><span class="tkst '+cls+'">'+escAspas(t.status||"—")+'</span></td>'+
@@ -1619,7 +1682,11 @@ function pjAbrirFicha(pid){
     (botoes?'<div class="pjf-acts">'+botoes+'</div>':"")+
     '<div class="pjf-sec">Tarefas do projeto ('+tarefas.length+')</div>'+
     '<div class="tkwrap"><table class="tktab"><thead><tr><th>Etapa</th><th>Tarefa</th><th>Responsável</th><th>Prazo</th><th>Status</th><th></th></tr></thead>'+
-    '<tbody>'+(linhasT||'<tr><td colspan="6" style="padding:14px;color:var(--muted)">Nenhuma tarefa.</td></tr>')+'</tbody></table></div>';
+    '<tbody>'+(linhasT||'<tr><td colspan="6" style="padding:14px;color:var(--muted)">Nenhuma tarefa.</td></tr>')+'</tbody></table></div>'+
+    pjBlocoObraFranq(row,cp)+
+    '<div class="pjf-sec">Feed do projeto</div>'+
+    '<div id="pjFeedBox"><div class="vazio" style="font-size:12px;color:var(--muted)">Carregando observações…</div></div>'+
+    (USUARIO.podeConcluir? '<div class="pjfeed-nova"><textarea id="pjObsTexto" placeholder="Anotar observação ou atualização importante…" rows="2"></textarea><button class="pjf-btn prim" id="pjObsEnviar">Adicionar</button></div>':'');
 
   /* liga ações da ficha */
   var self=document.getElementById("pjfFase");
@@ -1649,6 +1716,58 @@ function pjAbrirFicha(pid){
           alert("Não deu certo: "+(e&&e.message?e.message:e)); })
         .concluirTarefa(p[0],p[1],p[2],iso2br(hojeISO()),TOKEN); };
   });
+
+  /* editar tarefa: pede novo responsável e novo prazo (prompt simples) */
+  [].forEach.call(document.querySelectorAll("#pjFichaBody [data-fe]"),function(b){
+    b.onclick=function(){
+      var p=b.getAttribute("data-fe").split("|").map(decodeURIComponent);
+      var respAtual=decodeURIComponent(b.getAttribute("data-resp")||"");
+      var prazoAtual=b.getAttribute("data-prazo")||"";
+      var novoResp=prompt("Responsável pela tarefa \""+p[2]+"\":", respAtual);
+      if(novoResp===null) return;
+      var novoPrazo=prompt("Prazo (fim planejado) no formato dd/mm/aaaa:", prazoAtual);
+      if(novoPrazo===null) return;
+      b.disabled=true; b.textContent="…";
+      google.script.run
+        .withSuccessHandler(function(){ carregar(); })
+        .withFailureHandler(function(e){ b.disabled=false; b.textContent="✎";
+          alert("Não deu certo: "+(e&&e.message?e.message:e)); })
+        .editarTarefa(JSON.stringify({projId:p[0],etapa:p[1],tarefa:p[2],resp:novoResp,fimPlan:novoPrazo}),TOKEN);
+    };
+  });
+
+  /* editar dados de obra/franqueado (reusa o modal de editar projeto) */
+  var beo=document.getElementById("pjfEditObra");
+  if(beo) beo.onclick=function(){ pjFecharFicha(); tkEditar(pid); };
+
+  /* feed: carrega observações do projeto */
+  (function(){
+    var box=document.getElementById("pjFeedBox");
+    if(!box) return;
+    google.script.run
+      .withSuccessHandler(function(t){
+        var obs=[]; try{ obs=JSON.parse(t); }catch(e){}
+        if(!obs.length){ box.innerHTML='<div class="vazio" style="font-size:12px;color:var(--muted)">Nenhuma observação ainda.</div>'; return; }
+        box.innerHTML=obs.map(function(o){
+          return '<div class="pjfeed-item"><div class="pjfeed-meta"><b>'+escAspas(o.autor)+'</b> · '+escAspas(o.data)+'</div><div class="pjfeed-txt">'+escAspas(o.texto)+'</div></div>';
+        }).join("");
+      })
+      .withFailureHandler(function(){ box.innerHTML='<div class="vazio" style="font-size:12px;color:var(--muted)">Não foi possível carregar o feed.</div>'; })
+      .lerObservacoes(pid,TOKEN);
+  })();
+
+  /* enviar nova observação */
+  var bEnv=document.getElementById("pjObsEnviar");
+  if(bEnv) bEnv.onclick=function(){
+    var ta=document.getElementById("pjObsTexto"); var txt2=(ta.value||"").trim();
+    if(!txt2){ ta.focus(); return; }
+    bEnv.disabled=true; bEnv.textContent="…";
+    google.script.run
+      .withSuccessHandler(function(){ pjAbrirFicha(pid); })  // recarrega a ficha com a nova obs
+      .withFailureHandler(function(e){ bEnv.disabled=false; bEnv.textContent="Adicionar";
+        alert("Não deu certo: "+(e&&e.message?e.message:e)); })
+      .adicionarObservacao(pid, txt2, TOKEN);
+  };
 
   document.getElementById("pjFichaOv").classList.add("on");
 }
@@ -2881,6 +3000,10 @@ function carregarProjetoEdicao(){
   document.getElementById("nvEEst").value = "";
   const di=colI?pdate(G(r,colI)):null;
   document.getElementById("nvEIni").value = di?di.getFullYear()+"-"+("0"+(di.getMonth()+1)).slice(-2)+"-"+("0"+di.getDate()).slice(-2):"";
+  /* campos novos de obra/franqueado (só preenche se a coluna existir) */
+  function setV(elId, key){ var el=document.getElementById(elId); if(el) el.value = (cp[key]!=null&&cp[key]>=0)?txt(G(r,cp[key])):""; }
+  setV("nvEEndObra","endObra"); setV("nvEAreaTer","areaTerreno"); setV("nvEPiso","piso"); setV("nvETipoEd","tipoEdif");
+  setV("nvEFqNome","fqNome"); setV("nvEFqEnd","fqEnd"); setV("nvEFqCpf","fqCpf"); setV("nvEFqTel","fqTel"); setV("nvEFqEmail","fqEmail");
 }
 function acharCol(cmap,nomes){ for(const n of nomes) if(cmap[n]) return cmap[n]; return 0; }
 
@@ -2894,7 +3017,16 @@ function salvarEdicaoProjeto(){
     quadras:document.getElementById("nvEQ").value,
     estac:document.getElementById("nvEEst").value,
     area:document.getElementById("nvEArea").value,
-    iniPlan:iso2br(document.getElementById("nvEIni").value)};
+    iniPlan:iso2br(document.getElementById("nvEIni").value),
+    endObra:document.getElementById("nvEEndObra").value.trim(),
+    areaTerreno:document.getElementById("nvEAreaTer").value.trim(),
+    piso:document.getElementById("nvEPiso").value.trim(),
+    tipoEdif:document.getElementById("nvETipoEd").value.trim(),
+    fqNome:document.getElementById("nvEFqNome").value.trim(),
+    fqEnd:document.getElementById("nvEFqEnd").value.trim(),
+    fqCpf:document.getElementById("nvEFqCpf").value.trim(),
+    fqTel:document.getElementById("nvEFqTel").value.trim(),
+    fqEmail:document.getElementById("nvEFqEmail").value.trim()};
   google.script.run
     .withSuccessHandler(t=>{const r=JSON.parse(t);
       bt.disabled=false;bt.textContent="Salvar alterações";

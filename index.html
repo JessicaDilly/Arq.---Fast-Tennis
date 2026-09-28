@@ -1187,18 +1187,43 @@ const SB_ACOES={
     if(!USUARIO.podeEditar) throw new Error("Sem permissão.");
     const d=JSON.parse(dadosJson);
     let id=(d.id||"").trim();
-    if(!id){  // gerar o próximo FT.n automaticamente
+    if(!id){
       const {data}=await sb.from("projetos").select("id");
       let maxN=0;
-      (data||[]).forEach(function(r){ const m=String(r.id||"").match(/FT\.(\d+)/i); if(m) maxN=Math.max(maxN,+m[1]); });
+      (data||[]).forEach(function(r){ const m2=String(r.id||"").match(/FT\.(\d+)/i); if(m2) maxN=Math.max(maxN,+m2[1]); });
       id="FT."+(maxN+1);
     }
     const ins={id:id, nome:d.nome||"", padrao:d.padrao||"", fase:d.fase||"NÃO INICIADO",
       qtd_quadras:+d.quadras||null, estacionamento:d.estac||null,
       area_lote:d.area?((+String(d.area).replace(",","."))||null):null, inicio_plan:d.iniPlan?br2iso(d.iniPlan):null};
-    const {error}=await sb.from("projetos").insert(ins);
-    if(error) throw new Error(error.message);
-    return JSON.stringify({ok:true, msg:"Projeto "+id+" criado"});
+    const e1=await sb.from("projetos").insert(ins);
+    if(e1.error) throw new Error(e1.error.message);
+
+    // gerar as 10 tarefas do fluxo padrão, encadeadas em dias úteis
+    if(d.gerarTarefas){
+      const FLUXO=["BRIEFING","ANTEPROJETO","APROVAÇÃO","APRESENTAÇÃO","ESTUDO ORÇAMENTÁRIO",
+        "APROVAÇÃO FRANQUEADO","EXECUTIVO","VALIDAÇÃO","REUNIÃO FORNECEDOR","COMPLEMENTARES"];
+      // dias-padrão por etapa (fallback embutido; ajustável na aba padrão depois)
+      const DIAS={"BRIEFING":1,"ANTEPROJETO":5,"APROVAÇÃO":3,"APRESENTAÇÃO":1,"ESTUDO ORÇAMENTÁRIO":3,
+        "APROVAÇÃO FRANQUEADO":3,"EXECUTIVO":8,"VALIDAÇÃO":2,"REUNIÃO FORNECEDOR":1,"COMPLEMENTARES":5};
+      function ehUtilD(x){const w=x.getDay();return w!==0&&w!==6;}
+      function proxU(x){let y=new Date(x.getTime());do{y.setDate(y.getDate()+1);}while(!ehUtilD(y));return y;}
+      function somaU(x,n){let y=new Date(x.getTime());for(let i=0;i<n;i++)y=proxU(y);return y;}
+      function iso(x){return x.getFullYear()+"-"+("0"+(x.getMonth()+1)).slice(-2)+"-"+("0"+x.getDate()).slice(-2);}
+      let base=d.iniPlan?br2iso(d.iniPlan):null;
+      let ini = base? new Date(base+"T12:00:00") : new Date();
+      if(!ehUtilD(ini)) ini=proxU(ini);
+      const tarefas=[];
+      FLUXO.forEach(function(et){
+        const dias=DIAS[et]||1;
+        const fim = dias>1? somaU(ini,dias-1) : new Date(ini.getTime());
+        tarefas.push({projeto_id:id, etapa:et, tarefa:et, inicio_plan:iso(ini), fim_plan:iso(fim), esforco:dias, pct:0});
+        ini=proxU(fim);
+      });
+      const e2=await sb.from("tarefas").insert(tarefas);
+      if(e2.error) throw new Error("Projeto criado, mas erro ao gerar tarefas: "+e2.error.message);
+    }
+    return JSON.stringify({ok:true, msg:"Projeto "+id+" criado"+(d.gerarTarefas?" com 10 tarefas":"")});
   },
 
   async criarTarefa(dadosJson){

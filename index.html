@@ -9,6 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 :root{--bg:#F7F8FA;--card:#FFFFFF;--ink:#19222A;--muted:#7A858C;--line:#ECEEF1;--line2:#F2F4F6;--accent:#15616D;--accent2:#5E9AA3;--green:#3B8C6E;--amber:#D19A2E;--red:#C2554F;--gray:#AEB6BC;--cancel:#CDD3D8;--r:14px;--shadow:0 1px 2px rgba(20,40,50,.04)}
@@ -154,6 +155,13 @@ tr:last-child td{border-bottom:0}
 .nav button:hover{color:var(--ink)}
 .nav button.on{color:var(--accent);border-bottom-color:var(--accent)}
 .tab{display:none}.tab.on{display:block}
+.projT{width:100%;border-collapse:collapse;font-size:12.5px}
+.projT th,.projT td{padding:8px 10px;text-align:center;border:1px solid var(--line2)}
+.projT th{background:var(--line);color:var(--muted);font-size:11px;font-weight:700}
+.projT th.fut,.projT td.fut{background:#fafbfb;color:var(--muted)}
+.projT td.rot{text-align:left;font-weight:600;color:var(--ink);white-space:nowrap;background:var(--line)}
+.projT tr:last-child td{border-top:2px solid var(--line2)}
+.projT .tipoRow td{padding:4px}
 .nvsec{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--accent);font-weight:700;margin:16px 0 8px;padding-bottom:5px;border-bottom:1px solid var(--line2)}
 /* ===== Menu Tarefas ===== */
 .tkbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:14px}
@@ -530,18 +538,30 @@ ul.prev .muted{color:var(--muted);font-size:11px}
 </style>
 </head>
 <body>
+<div id="loginOv" style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#15616D,#0f3a42);z-index:1000;padding:20px">
+  <div style="background:#fff;border-radius:16px;padding:32px;width:min(380px,100%);box-shadow:0 20px 60px rgba(0,0,0,.3)">
+    <h1 style="margin:0 0 4px;font-size:20px;color:#15616D">Fast Tennis</h1>
+    <div style="color:#6b7a80;font-size:13px;margin-bottom:20px">Gestão de Projetos · Arquitetura</div>
+    <label style="display:block;font-size:12px;color:#6b7a80;font-weight:600;margin:12px 0 4px">E-mail</label>
+    <input type="email" id="lgEmail" autocomplete="username" style="width:100%;padding:11px 13px;border:1px solid #dde3e5;border-radius:9px;font-size:14px;font-family:inherit">
+    <label style="display:block;font-size:12px;color:#6b7a80;font-weight:600;margin:12px 0 4px">Senha</label>
+    <input type="password" id="lgSenha" autocomplete="current-password" style="width:100%;padding:11px 13px;border:1px solid #dde3e5;border-radius:9px;font-size:14px;font-family:inherit">
+    <button id="lgBt" style="width:100%;margin-top:20px;padding:12px;background:#15616D;color:#fff;border:0;border-radius:9px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit">Entrar</button>
+    <div id="lgErro" style="color:#C2554F;font-size:13px;margin-top:12px;display:none"></div>
+  </div>
+</div>
 <header>
   <div class="brand"><span class="dot"></span><div><h1>Gestão de Projetos</h1><span class="sub">Arquitetura · Fast Tennis</span></div></div>
-  <div class="meta"><span class="eu" id="eu"></span><span id="status">Carregando…</span><button id="btPdf">⎙ PDF</button><button id="refresh">↻ Atualizar</button></div>
+  <div class="meta"><span class="eu" id="eu"></span><span id="status">Carregando…</span><button id="btPdf">⎙ PDF</button><button id="refresh">↻ Atualizar</button><button id="btSair">Sair</button></div>
 </header>
 <div class="topbar">
 <div class="nav" id="nav">
   <button data-tab="geral" class="on">Visão geral</button>
   <button data-tab="relatorio">Relatório</button>
   <button data-tab="projetos">Projetos</button>
-  <button data-tab="tarefas">Tarefas</button>
-  <button data-tab="plan">Planejamento</button>
-  <button data-tab="prazos">Prazos &amp; Metas</button>
+  
+  <button data-tab="plan">Prazos</button>
+  <button data-tab="prazos">Planejamento e Metas</button>
   <button data-tab="equipe">Equipe</button>
   <button data-tab="aprov">Aprovação de Projetos</button>
   <button data-tab="qual">Qualidade</button>
@@ -567,7 +587,7 @@ ul.prev .muted{color:var(--muted);font-size:11px}
       <div class="panel col4"><h3>Projetos por status</h3><div class="chart-wrap"><canvas id="chStatus"></canvas></div></div>
       <div class="panel col8"><h3>Projetos por fase · total e atrasados</h3><div class="chart-wrap"><canvas id="chFase"></canvas></div>
         <div class="hint">Clique numa barra para filtrar o painel por essa fase.</div></div>
-      <div class="panel col12"><h3>Projetos por mês — iniciados (planejado) × entregues (real)</h3><div class="chart-wrap"><canvas id="chMes"></canvas></div>
+      <div class="panel col12"><h3>Projetos por mês — entradas × saídas reais</h3><div class="chart-wrap"><canvas id="chMes"></canvas></div>
         <div class="hint">Clique num mês para filtrar.</div></div>
     </div>
     <div class="section-title">Raio-X das unidades</div>
@@ -593,22 +613,55 @@ ul.prev .muted{color:var(--muted);font-size:11px}
 
   <!-- ============ PRAZOS & METAS ============ -->
   <section class="tab" id="tab-prazos">
-    <div class="section-title">Metas</div>
-    <div class="grid">
-      <div class="panel col4"><h3>Progresso da meta no mês</h3><div class="metabig" id="metaCard" style="height:250px"></div></div>
-      <div class="panel col8"><h3>Meta × Realizado (entregas)</h3><div class="chart-wrap"><canvas id="chMeta"></canvas></div></div>
+    <div id="pmAcesso" style="display:none;padding:40px;text-align:center;color:var(--muted)">
+      Esta aba é restrita ao administrador.
     </div>
-    <div class="section-title">Prazos</div>
-    <div class="grid">
-      <div class="panel col5"><h3>Tempo médio × padrão <small style="font-weight:400;color:var(--muted)">(dias úteis)</small></h3><div class="chart-wrap"><canvas id="chLead"></canvas></div>
-        <div class="hint">Clique numa barra para filtrar por padrão.</div></div>
-      <div class="panel col3"><h3>Tempo médio do fluxo</h3><div class="fluxo" id="fluxo"></div></div>
-      <div class="panel col4"><h3>Projetos atrasados <small id="qtdAtraso" style="font-weight:400;color:var(--muted)"></small></h3>
-        <div class="scroll"><table id="tblAtraso"><thead><tr><th>ID</th><th>Projeto</th><th>Fase</th><th class="num">Atraso</th></tr></thead><tbody></tbody></table></div>
+    <div id="pmConteudo">
+      <div class="section-title">Metas e planejamento
+        <button id="pmCfg" class="pjf-btn" style="float:right;font-size:12px">⚙ Definir metas</button>
+        <button id="pmExport" class="pjf-btn" style="float:right;font-size:12px;margin-right:8px">⬇ Exportar Excel</button>
       </div>
-      <div class="panel col12"><h3>Previsão de entrega <small style="font-weight:400;color:var(--muted)">— fase atual + tempos padrão, em dias úteis</small></h3>
-        <div style="font-size:12px;color:var(--muted);margin:-6px 0 10px">Encadeia as tarefas que faltam a partir de hoje. Desvio positivo (vermelho) = deve estourar o fim planejado.</div>
-        <div class="scroll"><table id="tblPrev"><thead><tr><th>ID</th><th>Projeto</th><th>Fase</th><th>Falta</th><th>Fim planejado</th><th>Previsão</th><th class="num">Desvio</th></tr></thead><tbody></tbody></table></div>
+      <div class="grid">
+        <div class="panel col6"><h3>Meta × Realizado — entregas por mês</h3><div class="chart-wrap"><canvas id="chMeta"></canvas></div></div>
+        <div class="panel col6"><h3>Entregas realizadas × Entradas efetuadas</h3><div class="chart-wrap"><canvas id="chEntEnt"></canvas></div></div>
+      </div>
+
+      <div class="section-title">Projeção anual da carteira</div>
+      <div class="grid"><div class="panel col12">
+        <div style="font-size:12px;color:var(--muted);margin:-2px 0 12px;line-height:1.6">
+          Parte de <b id="pjBase">—</b> projetos em andamento hoje. Cada mês: <b>andamento anterior − entregas + entradas</b>.
+          Meses passados usam os números <b>reais</b>; meses futuros usam a <b>meta</b> (12 entregas, 10 entradas).
+          O saldo de um mês vira o andamento inicial do seguinte.
+        </div>
+        <div class="scroll"><table class="plan projT" id="tblProj"></table></div>
+        <div id="projResumo" style="margin-top:10px;font-size:13px"></div>
+      </div></div>
+
+      <div class="section-title">Prazos por padrão e etapa</div>
+      <div class="grid">
+        <div class="panel col6"><h3>Tempo médio × alvo por padrão <small style="font-weight:400;color:var(--muted)">(dias úteis)</small></h3>
+          <div class="chart-wrap"><canvas id="chLead"></canvas></div></div>
+        <div class="panel col6"><h3>Tempo médio por etapa <small style="font-weight:400;color:var(--muted)">(gargalos, por padrão)</small></h3>
+          <select id="etPad" class="tksel" style="margin-bottom:10px"><option value="">Todos os padrões</option><option>STANDARD</option><option>PLUS</option><option>PREMIUM</option></select>
+          <div class="chart-wrap"><canvas id="chEtapa"></canvas></div></div>
+      </div>
+    </div>
+
+    <!-- modal: definir metas -->
+    <div id="pmOv" style="position:fixed;inset:0;background:rgba(15,30,36,.4);z-index:80;display:none;align-items:center;justify-content:center;padding:20px">
+      <div style="background:#fff;border-radius:16px;width:min(560px,100%);max-height:90vh;overflow-y:auto;padding:24px;position:relative">
+        <button id="pmX" style="position:absolute;top:14px;right:16px;background:none;border:0;font-size:22px;color:var(--muted);cursor:pointer">×</button>
+        <h2 style="margin:0 0 16px;font-size:18px;color:var(--accent)">Definir metas</h2>
+        <div class="fld"><label>Ano</label><input type="number" id="pmAno" value="2026" style="width:100%;padding:9px;border:1px solid var(--line2);border-radius:8px"></div>
+        <div class="nvsec">Metas gerais (aplicam a todos os meses do ano)</div>
+        <div class="g2">
+          <div class="fld"><label>Entregas / mês</label><input type="number" id="pmEntregas" value="12" style="width:100%;padding:9px;border:1px solid var(--line2);border-radius:8px"></div>
+          <div class="fld"><label>Entradas / mês</label><input type="number" id="pmEntradas" value="10" style="width:100%;padding:9px;border:1px solid var(--line2);border-radius:8px"></div>
+        </div>
+        <div class="nvsec">Metas por pessoa (entregas / mês)</div>
+        <div id="pmPessoas"></div>
+        <button class="pjf-btn prim" id="pmSalvar" style="margin-top:16px;width:100%">Salvar metas</button>
+        <div id="pmMsg" style="margin-top:10px;font-size:13px"></div>
       </div>
     </div>
   </section>
@@ -644,26 +697,6 @@ ul.prev .muted{color:var(--muted);font-size:11px}
           <span><i style="background:#F9E2E0;border:1px solid #EFC8C5"></i>acima de 100% — realocar</span>
           <span><i style="background:#E9EDF0;border:1px solid #E3E8EB"></i>ausência (férias/folga)</span>
         </div>
-      </div>
-    </div>
-    <div class="section-title">Sugestões de remanejamento</div>
-    <div class="grid">
-      <div class="panel col12">
-        <div style="font-size:12px;color:var(--muted);margin:-2px 0 14px;line-height:1.6">
-          Para cada semana em conflito, testo adiar cada projeto em 1 a 6 semanas e mostro a primeira opção que resolve —
-          com o <b>custo na entrega</b>. Como as tarefas de um projeto são encadeadas, adiar empurra tudo dele para frente.
-          <b>Nada é alterado automaticamente</b>: a decisão é sua, na planilha.
-        </div>
-        <div id="sugestoes"></div>
-      </div>
-    </div>
-
-    <div class="section-title">Planejamento anual</div>
-    <div class="grid">
-      <div class="panel col5"><h3>Entradas × Saídas por mês</h3><div class="chart-wrap"><canvas id="chPlan"></canvas></div></div>
-      <div class="panel col7"><h3>Unidades por mês</h3>
-        <div id="planAviso" style="font-size:12px;color:var(--muted);margin-bottom:8px;display:none"></div>
-        <div class="scroll"><table class="plan" id="tblPlan"><thead><tr><th>Mês</th><th>Entram</th><th>Saem</th></tr></thead><tbody></tbody></table></div>
       </div>
     </div>
   </section>
@@ -965,76 +998,272 @@ ul.prev .muted{color:var(--muted);font-size:11px}
    Não existe mais URL pública: nada trafega em endereço aberto. */
 /* No GitHub Pages não há injeção do servidor. O usuário é resolvido pela API
    usando o token do link (?t=CODIGO). Começa nulo e é preenchido no carregar(). */
+/* ============================================================================
+   CONEXÃO COM O SUPABASE (substitui o token/Apps Script)
+   O painel inteiro continua chamando google.script.run.ACAO(...) como antes;
+   este shim traduz cada chamada para o Supabase, e o getDados monta os dados
+   no MESMO formato de matriz (linha 0 = cabeçalho) que o painel espera.
+   ============================================================================ */
+const SB_URL="https://lsckfimjdkltrkswzbdw.supabase.co";
+const SB_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxzY2tmaW1qZGtsdHJrc3d6YmR3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk3NzI4MzQsImV4cCI6MjEwNTM0ODgzNH0.pLBThXJGd2LqjdViVjsWh6Hum6wzaDzwTdiegHHH874";
+const sb=window.supabase.createClient(SB_URL,SB_KEY);
+const TOKEN="";  // não usado mais; mantido p/ compatibilidade com chamadas antigas
+
 let USUARIO = {ok:false, papel:"leitor", nome:"", podeEditar:false, podeAprovar:false, podeConcluir:false, interno:false};
-/* token do link pessoal: vem em ?t=... na URL. Reenviado em toda ação,
-   porque google.script.run não repassa os parâmetros da página. */
-const TOKEN = (function(){ try{
-  const p=new URLSearchParams(location.search); return p.get("t")||"";
-}catch(e){ return ""; } })();
 
-/* >>> URL do Apps Script (a API de dados). É o /exec da implantação v4. <<< */
-const API_URL = "https://script.google.com/macros/s/AKfycbyTap4zKzcTnJDxWAj98P6vDb0oazSKZS1RFo83_RgnT5ENQwSUXQKMd8C_DIyGxwtd/exec";
+/* helpers de data: banco devolve 'aaaa-mm-dd'; painel espera 'dd/mm/aaaa' */
+function d2br(s){ if(!s)return""; const p=String(s).split("T")[0].split("-"); return p.length===3?p[2]+"/"+p[1]+"/"+p[0]:""; }
+function br2iso(s){ if(!s)return null; const p=String(s).split("/"); return p.length===3?p[2]+"-"+p[1].padStart(2,"0")+"-"+p[0].padStart(2,"0"):null; }
 
-/* SHIM: emula google.script.run usando fetch para a API.
-   Cada .acao(args) vira uma chamada à API; o token é anexado automaticamente.
-   Mantém .withSuccessHandler / .withFailureHandler idênticos ao original,
-   então as chamadas existentes no painel não precisam mudar. */
+/* monta o objeto de dados no formato de matrizes que o receber() espera */
+async function sbGetDados(){
+  const [proj,tar,hor,err,obs] = await Promise.all([
+    sb.from("v_projetos").select("*"),
+    sb.from("v_tarefas").select("*"),
+    sb.from("horas").select("*"),
+    sb.from("erros").select("*"),
+    sb.from("padrao_etapas").select("*")
+  ]);
+  const P=proj.data||[], T=tar.data||[], H=hor.data||[], E=err.data||[], PE=obs.data||[];
+
+  /* PROJETOS: cabeçalho + linhas, nomes de coluna batendo com o SPEC do painel */
+  const projHead=["ID","Projeto","Franqueado / Resumo","Padrão","Fase","Status","Qtd Quadras","Estac.",
+    "Início Planej.","Fim Planej.","Início Real","Fim Real","Dias de Atraso","Ano Início","Mês Início",
+    "Ano Fim Real","Mês Fim Real","Área do lote","Endereço da obra","Piso da quadra","Tipo de edificação",
+    "Franqueado - Nome","Franqueado - Endereço","Franqueado - CPF","Franqueado - Telefone","Franqueado - E-mail"];
+  const projRows=P.map(p=>{
+    const ir=p.inicio_real?String(p.inicio_real).split("-"):null, fr=p.fim_real?String(p.fim_real).split("-"):null;
+    return [p.id,p.nome||"",p.franqueado||"",p.padrao||"",p.fase||"",p.status||"",p.qtd_quadras??"",p.estacionamento||"",
+      d2br(p.inicio_plan),d2br(p.fim_plan),d2br(p.inicio_real),d2br(p.fim_real),p.dias_atraso??"",
+      ir?ir[0]:"",ir?String(+ir[1]):"", fr?fr[0]:"",fr?String(+fr[1]):"",
+      p.area_lote??"",p.endereco_obra||"",p.piso_quadra||"",p.tipo_edificacao||"",
+      p.franqueado_nome||"",p.franqueado_endereco||"",p.franqueado_cpf||"",p.franqueado_telefone||"",p.franqueado_email||""];
+  });
+
+  /* TAREFAS */
+  const tarHead=["ID Projeto","Projeto","Etapa","Tarefa","Responsável","Início Planej.","Esforço",
+    "Fim Planej.","Início Real","Fim Real","Status","Ano Fim Real","Mês Fim Real"];
+  const projNome={}; P.forEach(p=>projNome[p.id]=p.nome||"");
+  const tarRows=T.map(t=>{
+    const fr=t.fim_real?String(t.fim_real).split("-"):null;
+    return [t.projeto_id,projNome[t.projeto_id]||"",t.etapa||"",t.tarefa||"",t.responsavel||"",
+      d2br(t.inicio_plan),t.esforco??"",d2br(t.fim_plan),d2br(t.inicio_real),d2br(t.fim_real),
+      t.status||"", fr?fr[0]:"", fr?String(+fr[1]):""];
+  });
+
+  /* HORAS */
+  const horHead=["Data","Equipe","Projeto","Etapa","Horas","Ano","Mês"];
+  const horRows=H.map(h=>{ const d=h.data?String(h.data).split("-"):null;
+    return [d2br(h.data),h.pessoa||"",h.projeto_id||"",h.etapa||"",h.horas??"", d?d[0]:"", d?String(+d[1]):""]; });
+
+  /* ERROS */
+  const errHead=["Data","ID Projeto","Projeto","Etapa de Verificação","Fase","Tipo de Erro","Descrição",
+    "Gravidade","Responsável","Status","Ano","Mês"];
+  const errRows=E.map(e=>{ const d=e.data?String(e.data).split("-"):null;
+    return [d2br(e.data),e.projeto_id||"",projNome[e.projeto_id]||"",e.etapa_verificacao||"",e.fase||"",e.tipo_erro||"",
+      e.descricao||"",e.gravidade||"",e.responsavel||"",e.status||"", d?d[0]:"", d?String(+d[1]):""]; });
+
+  /* PADRAO_ETAPAS */
+  const peHead=["Etapa","Dias Padrão","Horas Padrão"];
+  const peRows=PE.map(x=>[x.etapa||x.nome||"",x.dias_padrao??x.dias??"",x.horas_padrao??x.horas??""]);
+
+  const out={
+    PROJETOS:[projHead,...projRows],
+    TAREFAS:[tarHead,...tarRows],
+    HORAS:[horHead,...horRows],
+    ERROS:[errHead,...errRows],
+    PADRAO_ETAPAS:[peHead,...peRows],
+    METAS:[["Mês","Ano","Mês N","Meta","Realizado"]],
+    METAS_PESSOAS:[["Pessoa","Ano","Mês","Meta"]],
+    PLANEJAMENTO_ANUAL:[["ID","Unidade"]],
+    AUSENCIAS:[["Pessoa","Tipo","Início","Fim","Obs"]],
+    APROVACAO:[["Projeto","Fase","Data de Envio","Link","Avaliação","Status","Data da Decisão","Responsável","Observações","_linha"]],
+    _USER: USUARIO
+  };
+  return JSON.stringify(out);
+}
+
+/* acha a tarefa (id) por projId+etapa+tarefa, como o painel identifica */
+function _norm(s){ return String(s==null?"":s).normalize("NFD").replace(/[\u0300-\u036f]/g,"").toUpperCase().trim(); }
+async function sbAcharTarefaId(projId,etapa,tarefa){
+  let q=sb.from("tarefas").select("id,etapa,tarefa,pct,inicio_real").eq("projeto_id",projId);
+  const {data}=await q;
+  if(!data||!data.length) return null;
+  const alvoE=_norm(etapa), alvoT=_norm(tarefa);
+  // casa por etapa+tarefa (normalizando acentos); prioriza NÃO concluída
+  let cand=data.filter(r=>_norm(r.etapa)===alvoE && (!alvoT||_norm(r.tarefa)===alvoT));
+  if(!cand.length) cand=data.filter(r=>_norm(r.etapa)===alvoE);            // só etapa
+  if(!cand.length && alvoT) cand=data.filter(r=>_norm(r.tarefa)===alvoT);  // só tarefa
+  if(!cand.length) return null;
+  const pend=cand.find(r=>(Number(r.pct)||0)<1);
+  return pend||cand[0];
+}
+
+/* ---- ações de escrita, com a mesma assinatura que o painel chama ---- */
+const SB_ACOES={
+  async getDados(){ return await sbGetDados(); },
+
+  async concluirTarefa(projId,etapa,tarefa,dataStr){
+    if(!USUARIO.podeConcluir) throw new Error("Sem permissão para concluir.");
+    const t=await sbAcharTarefaId(projId,etapa,tarefa);
+    if(!t) throw new Error("Tarefa não encontrada.");
+    const iso=dataStr?br2iso(dataStr):new Date().toISOString().split("T")[0];
+    const upd={pct:1, fim_real:iso}; if(!t.inicio_real) upd.inicio_real=iso;
+    const {error}=await sb.from("tarefas").update(upd).eq("id",t.id);
+    if(error) throw new Error(error.message);
+    return JSON.stringify({ok:true, msg:projId+" · "+tarefa+" concluída"});
+  },
+
+  async editarTarefa(dadosJson){
+    if(!USUARIO.podeEditar) throw new Error("Sem permissão.");
+    const d=JSON.parse(dadosJson);
+    const t=await sbAcharTarefaId(d.projId,d.etapa,d.tarefa);
+    if(!t) throw new Error("Tarefa não encontrada.");
+    const upd={};
+    if(d.resp!=null&&d.resp!=="") upd.responsavel=d.resp;
+    if(d.fimPlan) upd.fim_plan=br2iso(d.fimPlan);
+    if(d.iniPlan) upd.inicio_plan=br2iso(d.iniPlan);
+    const {error}=await sb.from("tarefas").update(upd).eq("id",t.id);
+    if(error) throw new Error(error.message);
+    return JSON.stringify({ok:true, msg:"Tarefa atualizada"});
+  },
+
+  async mudarFaseProjeto(projId,fase){
+    if(!USUARIO.podeEditar) throw new Error("Sem permissão.");
+    const f=(fase||"").toUpperCase();
+    const {error}=await sb.from("projetos").update({fase:f}).eq("id",projId);
+    if(error) throw new Error(error.message);
+    if(f==="CANCELADO"){
+      await sb.from("tarefas").update({pct:1,fim_real:new Date().toISOString().split("T")[0]}).eq("projeto_id",projId).lt("pct",1);
+    } else if(f==="PAUSADO"){
+      await sb.from("tarefas").update({pct:0,inicio_real:null,fim_real:null}).eq("projeto_id",projId).lt("pct",1);
+    }
+    return JSON.stringify({ok:true, msg:projId+" → "+f});
+  },
+
+  async editarProjeto(dadosJson){
+    if(!USUARIO.podeEditar) throw new Error("Sem permissão.");
+    const d=JSON.parse(dadosJson);
+    const upd={};
+    if(d.nome!=null&&d.nome!=="") upd.nome=d.nome;
+    if(d.padrao!=null&&d.padrao!=="") upd.padrao=d.padrao;
+    if(d.quadras!=null&&d.quadras!=="") upd.qtd_quadras=+d.quadras||null;
+    if(d.estac!=null&&d.estac!=="") upd.estacionamento=d.estac;
+    if(d.area!=null&&d.area!=="") upd.area_lote=+String(d.area).replace(",",".")||null;
+    if(d.iniPlan) upd.inicio_plan=br2iso(d.iniPlan);
+    if(d.endObra!=null) upd.endereco_obra=d.endObra;
+    if(d.piso!=null) upd.piso_quadra=d.piso;
+    if(d.tipoEdif!=null) upd.tipo_edificacao=d.tipoEdif;
+    if(d.fqNome!=null) upd.franqueado_nome=d.fqNome;
+    if(d.fqEnd!=null) upd.franqueado_endereco=d.fqEnd;
+    if(d.fqCpf!=null) upd.franqueado_cpf=d.fqCpf;
+    if(d.fqTel!=null) upd.franqueado_telefone=d.fqTel;
+    if(d.fqEmail!=null) upd.franqueado_email=d.fqEmail;
+    const {error}=await sb.from("projetos").update(upd).eq("id",d.id||d.projId);
+    if(error) throw new Error(error.message);
+    return JSON.stringify({ok:true, msg:"Projeto atualizado"});
+  },
+
+  async criarProjeto(dadosJson){
+    if(!USUARIO.podeEditar) throw new Error("Sem permissão.");
+    const d=JSON.parse(dadosJson);
+    const ins={id:d.id, nome:d.nome||"", padrao:d.padrao||"", fase:d.fase||"NÃO INICIADO",
+      qtd_quadras:+d.quadras||null, estacionamento:d.estac||null,
+      area_lote:d.area?(+String(d.area).replace(",","."))||null:null, inicio_plan:d.iniPlan?br2iso(d.iniPlan):null};
+    const {error}=await sb.from("projetos").insert(ins);
+    if(error) throw new Error(error.message);
+    return JSON.stringify({ok:true, msg:"Projeto "+d.id+" criado"});
+  },
+
+  async criarTarefa(dadosJson){
+    if(!USUARIO.podeEditar) throw new Error("Sem permissão.");
+    const d=JSON.parse(dadosJson);
+    const ins={projeto_id:d.projId||d.idProj, etapa:d.etapa||"", tarefa:d.tarefa||"",
+      responsavel:d.resp||null, inicio_plan:d.iniPlan?br2iso(d.iniPlan):null,
+      fim_plan:d.fimPlan?br2iso(d.fimPlan):null, esforco:+d.esforco||null, pct:0};
+    const {error}=await sb.from("tarefas").insert(ins);
+    if(error) throw new Error(error.message);
+    return JSON.stringify({ok:true, msg:"Tarefa criada"});
+  },
+
+  async lancarHoras(projId,etapa,horas,descricao,dataStr){
+    if(!USUARIO.podeConcluir) throw new Error("Sem permissão.");
+    const ins={projeto_id:projId, etapa:etapa||null, horas:+String(horas).replace(",",".")||0,
+      descricao:descricao||null, pessoa:USUARIO.nome, data:dataStr?br2iso(dataStr):new Date().toISOString().split("T")[0]};
+    const {error}=await sb.from("horas").insert(ins);
+    if(error) throw new Error(error.message);
+    return JSON.stringify({ok:true, msg:"Horas lançadas"});
+  },
+
+  async adicionarObservacao(projId,texto){
+    if(!USUARIO.podeConcluir) throw new Error("Sem permissão.");
+    const {error}=await sb.from("observacoes").insert({projeto_id:projId, texto:texto,
+      autor_id:USUARIO.id, autor_nome:USUARIO.nome});
+    if(error) throw new Error(error.message);
+    return JSON.stringify({ok:true});
+  },
+
+  async lerObservacoes(projId){
+    const {data}=await sb.from("observacoes").select("*").eq("projeto_id",projId).order("criado_em",{ascending:false});
+    return JSON.stringify((data||[]).map(o=>({data:d2br(o.criado_em)+" "+String(o.criado_em||"").split("T")[1]?.slice(0,5)||"", autor:o.autor_nome||"", texto:o.texto||""})));
+  },
+
+  async decidirAprovacao(){ throw new Error("Aprovação ainda não migrada."); },
+
+  /* ---- metas e planejamento ---- */
+  async lerMetas(ano){
+    const [mg,mp,ta]=await Promise.all([
+      sb.from("metas").select("*").eq("ano",ano),
+      sb.from("metas_pessoas").select("*").eq("ano",ano),
+      sb.from("tempo_alvo").select("*")
+    ]);
+    return JSON.stringify({gerais:mg.data||[], pessoas:mp.data||[], alvos:ta.data||[]});
+  },
+  async salvarMetas(dadosJson){
+    if(USUARIO.papel!=="admin") throw new Error("Apenas administrador define metas.");
+    const d=JSON.parse(dadosJson);
+    // grava a mesma meta geral p/ os 12 meses do ano
+    const ger=[]; for(let m=1;m<=12;m++) ger.push({ano:d.ano,mes:m,meta_entregas:d.entregas,meta_entradas:d.entradas});
+    const e1=await sb.from("metas").upsert(ger,{onConflict:"ano,mes"});
+    if(e1.error) throw new Error(e1.error.message);
+    // metas por pessoa (todos os meses)
+    if(d.pessoas&&d.pessoas.length){
+      const mp=[]; d.pessoas.forEach(p=>{ for(let m=1;m<=12;m++) mp.push({pessoa:p.pessoa,ano:d.ano,mes:m,meta:p.meta}); });
+      const e2=await sb.from("metas_pessoas").upsert(mp,{onConflict:"pessoa,ano,mes"});
+      if(e2.error) throw new Error(e2.error.message);
+    }
+    return JSON.stringify({ok:true, msg:"Metas salvas para "+d.ano});
+  }
+};
+
+/* SHIM: emula google.script.run chamando SB_ACOES (assíncrono).
+   Cada Runner guarda seus handlers e executa a ação USANDO O PRÓPRIO runner,
+   para o .withSuccessHandler(f).acao() encadeado funcionar. */
 const google = { script: { run: (function(){
-  function Runner(){ this._ok=null; this._fail=null; }
+  function Runner(){ this._ok=null; this._fail=null; var self=this;
+    Object.keys(SB_ACOES).forEach(function(acao){
+      self[acao]=function(){
+        var args=arguments;
+        Promise.resolve().then(async function(){
+          try{
+            var fn=SB_ACOES[acao]; if(!fn) throw new Error("Ação desconhecida: "+acao);
+            var res=await fn.apply(null,args);
+            if(self._ok) self._ok(res);
+          }catch(e){ if(self._fail) self._fail(e); else console.error(e); }
+        });
+        return self;
+      };
+    });
+  }
   Runner.prototype.withSuccessHandler=function(f){ this._ok=f; return this; };
   Runner.prototype.withFailureHandler=function(f){ this._fail=f; return this; };
-  // mapa: nome da ação -> nomes dos parâmetros na ordem em que o painel chama
-  const PARAMS={
-    getDados:["token"],
-    concluirTarefa:["projId","etapa","tarefa","dataStr","token"],
-    lancarHoras:["projId","etapa","horas","descricao","dataStr","horaIni","horaFim","token"],
-    criarProjeto:["dadosJson","token"],
-    criarTarefa:["dadosJson","token"],
-    editarProjeto:["dadosJson","token"],
-    mudarFaseProjeto:["projId","fase","token"],
-    editarTarefa:["dadosJson","token"],
-    adicionarObservacao:["projId","texto","token"],
-    lerObservacoes:["projId","token"],
-    decidirAprovacao:["refStr","status","observacao","token"]
-  };
-  function fazer(acao,args){
-    const runner=this;
-    const nomes=PARAMS[acao]||[];
-    const corpo={api:acao};
-    for(let i=0;i<nomes.length;i++){ corpo[nomes[i]] = (nomes[i]==="token") ? TOKEN : args[i]; }
-    /* TUDO via POST com Content-Type text/plain = requisição SIMPLES: o navegador
-       não faz preflight e não exige Access-Control-Allow-Origin no GET. É o único
-       jeito de o Apps Script (que não manda header CORS) responder a fetch de outro site.
-       redirect:follow porque o /exec responde 302 p/ googleusercontent. */
-    const opt = {method:"POST", body:JSON.stringify(corpo), redirect:"follow",
-                 headers:{"Content-Type":"text/plain;charset=utf-8"}};
-    fetch(API_URL,opt)
-      .then(r=>r.text())
-      .then(txt=>{
-        let env; try{ env=JSON.parse(txt); }catch(e){ throw new Error("Resposta inválida do servidor"); }
-        if(!env.ok) throw new Error(env.erro||"Erro no servidor");
-        // as funções devolvem JSON string; o painel espera texto p/ dar JSON.parse
-        const data = (typeof env.data==="string") ? env.data : JSON.stringify(env.data);
-        if(runner._ok) runner._ok(data);
-      })
-      .catch(err=>{ if(runner._fail) runner._fail(err); });
-    return runner;
-  }
-  // cria um objeto com um método por ação
-  const api={};
-  Object.keys(PARAMS).forEach(function(acao){
-    api[acao]=function(){ return fazer.call(this,acao,arguments); };
-  });
-  // permite o encadeamento .withSuccessHandler().acao()
-  const base=new Runner();
-  Object.keys(api).forEach(function(acao){ base[acao]=api[acao]; });
-  // cada chamada precisa de um runner novo; então withSuccessHandler cria um
-  const proxy={};
-  proxy.withSuccessHandler=function(f){ const r=new Runner(); Object.keys(api).forEach(function(a){ r[a]=api[a]; }); return r.withSuccessHandler(f); };
-  proxy.withFailureHandler=function(f){ const r=new Runner(); Object.keys(api).forEach(function(a){ r[a]=api[a]; }); return r.withFailureHandler(f); };
-  Object.keys(api).forEach(function(a){ proxy[a]=function(){ const r=new Runner(); Object.keys(api).forEach(function(x){ r[x]=api[x]; }); return r[a].apply(r,arguments); }; });
+  var proxy={};
+  proxy.withSuccessHandler=function(f){ return new Runner().withSuccessHandler(f); };
+  proxy.withFailureHandler=function(f){ return new Runner().withFailureHandler(f); };
+  Object.keys(SB_ACOES).forEach(function(a){ proxy[a]=function(){ var r=new Runner(); return r[a].apply(r,arguments); }; });
   return proxy;
-})() } };   // já é objeto literal — NÃO usar JSON.parse
+})() } };
+
 const ATUALIZAR_AUTO_MIN=0;
 const HORAS_DIA=8;                  // capacidade diaria de cada pessoa
 const CAP_SEMANA=5;                 // dias uteis por pessoa por semana
@@ -1246,10 +1475,18 @@ function periodo(f){
 /* em que balde o projeto cai NAQUELE periodo */
 function bucket(r,f){
   const c=COL.PROJETOS||{}, {B,ref}=periodo(f);
-  if(KEY(G(r,c.fase))==="CANCELADO") return "cancelado";
+  const fase=KEY(G(r,c.fase));
+  /* estados definidos pela FASE (manuais) têm prioridade sobre as datas */
+  if(fase==="CANCELADO") return "cancelado";
+  if(fase==="PAUSADO")   return "pausado";
+  if(fase.indexOf("NAO INICI")>=0 || fase==="") return "naoiniciado";
   const ir=pdate(G(r,c.iniReal)), fr=pdate(G(r,c.fimReal)), fp=pdate(G(r,c.fimPlan));
+  if(fase.indexOf("CONCLU")>=0) return "concluido";
   if(fr&&fr<=B) return "concluido";
   if(ir&&ir<=B) return (fp&&fp<ref)?"atrasado":"andamento";
+  /* tem fase de trabalho (anteprojeto, executivo...) mas sem início real ainda:
+     conta como andamento se a fase indica que já começou */
+  if(fase && fase.indexOf("CONCLU")<0) return "andamento";
   return "naoiniciado";
 }
 /* o projeto viveu dentro do periodo? */
@@ -1265,7 +1502,7 @@ function noPeriodo(r,f){
 }
 function classificar(f){
   const P=(DADOS.PROJETOS||[]).filter(r=>pf(r,f));
-  const g={escopo:P,concluido:[],andamento:[],atrasado:[],naoiniciado:[],cancelado:[]};
+  const g={escopo:P,concluido:[],andamento:[],atrasado:[],naoiniciado:[],cancelado:[],pausado:[]};
   P.forEach(r=>g[bucket(r,f)].push(r));
   return g;
 }
@@ -1368,7 +1605,8 @@ function rlDados(){
   (DADOS.TAREFAS||[]).forEach(function(r){
     var fr=pdate(G(r,ct.fimReal)); if(!noMes(fr)) return;
     var ir=pdate(G(r,ct.iniReal)); if(!ir) return;
-    var dias=Math.round((fr-ir)/86400000); if(dias<0) return;
+    var dias=Math.round((fr-ir)/86400000);
+    if(dias<0 || dias>180) return;   // ignora durações impossíveis (dados tortos)
     var ek=KEY(G(r,ct.etapa));
     somaDur[ek]=(somaDur[ek]||0)+dias; contDur[ek]=(contDur[ek]||0)+1;
   });
@@ -1720,9 +1958,9 @@ function pjBlocoObraFranq(row,cp){
       return '<div class="pjf-cel"><div class="k">'+c[0]+'</div><div class="v">'+escAspas(c[1]||"—")+'</div></div>';
     }).join("")+'</div>';
   }
-  var ed = USUARIO.podeEditar ? '<button class="pjf-btn" id="pjfEditObra" style="margin-top:8px">Editar dados de obra/franqueado</button>' : '';
-  return '<div class="pjf-sec">Dados da obra</div>'+grid(obra)+
-         '<div class="pjf-sec">Dados do franqueado (RRT)</div>'+grid(franq)+ed;
+  var ed = USUARIO.podeEditar ? '<button class="pjf-btn" id="pjfEditObra" style="margin-top:8px">Editar dados de obra</button>' : '';
+  // dados do franqueado retirados da EXIBIÇÃO da ficha (continuam no cadastro/edição)
+  return '<div class="pjf-sec">Dados da obra</div>'+grid(obra)+ed;
 }
 
 /* exporta o resumo dos projetos (respeitando os filtros ativos) para Excel */
@@ -2120,23 +2358,31 @@ function render(){
   const utis=g.concluido.map(r=>diasUteis(pdate(G(r,c.iniReal)),pdate(G(r,c.fimReal)))).filter(x=>x!=null);
   const tm=media(utis);
 
+  // dias de atraso (fim planejado vencido, não concluído) — média dos atrasados
+  const diasAtrasoDe=r=>{ const fp=pdate(G(r,c.fimPlan)); if(!fp)return 0; const hj=hoje;
+    return fp<hj? Math.round((hj-fp)/86400000):0; };
+  const atrasosAnd=g.andamento.map(diasAtrasoDe).filter(x=>x>0);
+  const atrasosAt=g.atrasado.map(diasAtrasoDe).filter(x=>x>0);
+  const maxAtrasoAt=atrasosAt.length?Math.max(...atrasosAt):0;
+  const medAtrasoAt=atrasosAt.length?Math.round(atrasosAt.reduce((a,b)=>a+b,0)/atrasosAt.length):0;
+  const pausados=(g.pausado||[]).length;
+
   const cards=[
     ["Total de projetos",total,"","com atividade "+rot,"escopo"],
     ["Concluídos",g.concluido.length,"green",per.aberto?"":"entregues "+rot,"concluido"],
     ["Em andamento",and+at,"amber",(at?"inclui "+at+" atrasado"+(at>1?"s":""):"ativos "+rot),"ativos"],
-    ["Atrasados",at,"red","prazo vencido","atrasado"],
+    ["Atrasados",at,"red",(medAtrasoAt?medAtrasoAt+" dias em média · até "+maxAtrasoAt:"prazo vencido"),"atrasado"],
     ["Não iniciados",g.naoiniciado.length,"gray","","naoiniciado"],
-    ["Cancelados",g.cancelado.length,"gray","","cancelado"],
-    ["% Atrasados",total?Math.round(at/total*100)+"%":"0%","red","dos "+total+" do período","atrasado"],
-    ["Tempo médio",tm==null?"–":tm,"","dias úteis · "+utis.length+" entregue(s)","concluido"]
+    ["Pausados",pausados,"gray","","pausado"],
+    ["Cancelados",g.cancelado.length,"gray","","cancelado"]
   ];
   document.getElementById("cards").innerHTML=cards.map(x=>
     `<div class="card ${x[2]} clickable" data-b="${x[4]}"><div class="k">${x[0]}</div><div class="v">${x[1]}</div>${x[3]?`<div class="sub2">${x[3]}</div>`:""}</div>`).join("");
   [...document.querySelectorAll("#cards .card")].forEach(el=>el.addEventListener("click",()=>abrirLista(el.dataset.b,g,f)));
 
-  const sl=["Concluído","Em andamento","Atrasado","Não iniciado","Cancelado"];
-  donut("chStatus",sl,[g.concluido.length,and,at,g.naoiniciado.length,g.cancelado.length],
-        [HEX.green,HEX.amber,HEX.red,HEX.gray,HEX.cancel],total);
+  const sl=["Concluído","Em andamento","Atrasado","Não iniciado","Pausado","Cancelado"];
+  donut("chStatus",sl,[g.concluido.length,and,at,g.naoiniciado.length,(g.pausado||[]).length,g.cancelado.length],
+        [HEX.green,HEX.amber,HEX.red,HEX.gray,HEX.amber,HEX.cancel],total);
   renderRaioX(proj,c,{totQuadras,comEstac,qEstac,total});
 
   /* fases normalizadas */
@@ -2146,14 +2392,19 @@ function render(){
     {label:"Atrasados",data:fc.map(x=>g.atrasado.filter(r=>KEY(G(r,c.fase))===x.k).length),backgroundColor:HEX.red,borderRadius:4}],
     false,i=>setFiltro("fFase",fc[i].label));
 
-  const ini=Array(12).fill(0),ent=Array(12).fill(0);
+  // Entradas reais (início real no mês) x Saídas reais (fim real no mês)
+  const entradas=Array(12).fill(0),saidas=Array(12).fill(0);
   P.forEach(r=>{
     if(f.fase&&KEY(G(r,c.fase))!==KEY(f.fase))return;
     if(f.pad&&txt(G(r,c.padrao))!==f.pad)return;
-    const ai=txt(G(r,c.anoIni)),mi=num(G(r,c.mesIni)),af=txt(G(r,c.anoFim)),mf=num(G(r,c.mesFim));
-    if((!f.ano||ai===f.ano)&&mi>=1&&mi<=12)ini[mi-1]++;
-    if((!f.ano||af===f.ano)&&mf>=1&&mf<=12)ent[mf-1]++;});
-  linha("chMes",MESES,[{label:"Iniciados (planej.)",data:ini,color:HEX.accent2},{label:"Entregues (real)",data:ent,color:HEX.accent}],i=>setFiltro("fMes",String(i+1)));
+    const fase=KEY(G(r,c.fase));
+    const ir=pdate(G(r,c.iniReal)), fr=pdate(G(r,c.fimReal));
+    // ENTRADA: projeto que iniciou (início real) no mês
+    if(ir && (!f.ano||String(ir.getFullYear())===f.ano)) entradas[ir.getMonth()]++;
+    // SAÍDA: projeto 100% entregue (concluído) no mês — fim real E fase concluída
+    if(fr && fase.indexOf("CONCLU")>=0 && (!f.ano||String(fr.getFullYear())===f.ano)) saidas[fr.getMonth()]++;
+  });
+  linha("chMes",MESES,[{label:"Entradas reais",data:entradas,color:"#2F6FB0"},{label:"Saídas reais",data:saidas,color:HEX.green}],i=>setFiltro("fMes",String(i+1)));
 
   /* ---- pessoas ---- */
   const ct=COL.TAREFAS||{};
@@ -2190,30 +2441,176 @@ function render(){
   barrasStack("chHoras",eH,eq.map((e,i)=>({label:e,backgroundColor:pal(i),borderRadius:3,data:eH.map(et=>{
     let s=0;H.forEach(r=>{if(txt(G(r,ch.etapa))===et&&txt(G(r,ch.equipe))===e){const n=num(G(r,ch.horas));if(!isNaN(n))s+=n;}});return Math.round(s*10)/10;})})));
 
-  metaProgresso(f);
-  const cm=COL.METAS||{};
-  const M=(DADOS.METAS||[]).filter(r=>!f.ano||txt(G(r,cm.ano))===f.ano);
-  barras("chMeta",M.map(r=>txt(G(r,cm.mesLabel))||MESES[(num(G(r,cm.mesNum))||0)-1]||""),
-    [{label:"Meta",data:M.map(r=>num(G(r,cm.meta))||0),backgroundColor:HEX.cancel,borderRadius:4},
-     {label:"Realizado",data:M.map(r=>num(G(r,cm.real))||0),backgroundColor:HEX.accent,borderRadius:4}]);
+  renderPlanMetas(f, g, proj);
 
-  /* tempo medio x padrao, em dias uteis */
-  const pads=uniq(P.map(r=>txt(G(r,c.padrao)))).sort();
-  barrasH("chLead",pads,[{label:"Dias úteis",data:pads.map(pd=>{
-    const ls=proj.filter(r=>txt(G(r,c.padrao))===pd).map(r=>diasUteis(pdate(G(r,c.iniReal)),pdate(G(r,c.fimReal)))).filter(x=>x!=null);
-    return media(ls)||0;}),backgroundColor:HEX.accent,borderRadius:4}],true,i=>setFiltro("fPad",pads[i]));
+  renderCalendario(f); renderCapacidade(); renderErros(f); renderPrevisao(proj); renderAlertas(g,f); renderAprovacao(f); renderTarefas(); renderProjetos(); renderRelatorio();
+}
 
-  renderFluxo(proj);
 
-  const ln=g.atrasado
-    .map(r=>({id:txt(G(r,c.id)),nome:txt(G(r,c.nome)),fase:txt(G(r,c.fase)),at:num(G(r,c.atraso))||0}))
-    .sort((a,b)=>b.at-a.at);
-  document.getElementById("qtdAtraso").textContent=ln.length?"("+ln.length+")":"";
-  document.querySelector("#tblAtraso tbody").innerHTML=ln.length
-    ? ln.map(l=>`<tr><td>${l.id}</td><td>${l.nome}</td><td>${l.fase}</td><td class="num"><span class="tag">${l.at}</span></td></tr>`).join("")
-    : `<tr><td colspan="4" style="color:var(--muted)">Nenhum atrasado no filtro.</td></tr>`;
+/* ============ PLANEJAMENTO E METAS (aba admin) ============ */
+var _METAS={gerais:[],pessoas:[],alvos:[]};
+function renderPlanMetas(f, g, proj){
+  // acesso só admin
+  var soAdmin = USUARIO.papel==="admin";
+  var cont=document.getElementById("pmConteudo"), acc=document.getElementById("pmAcesso");
+  if(cont) cont.style.display = soAdmin?"block":"none";
+  if(acc) acc.style.display = soAdmin?"none":"block";
+  if(!soAdmin) return;
+  if(!document.getElementById("tblProj")) return;
 
-  renderCalendario(f); renderCapacidade(); renderPlano(f); renderErros(f); renderPrevisao(proj); renderAlertas(g,f); renderAprovacao(f); renderTarefas(); renderProjetos(); renderRelatorio();
+  var c=COL.PROJETOS||{}, ct=COL.TAREFAS||{};
+  var ano = f.ano || String(hoje.getFullYear());
+
+  // carrega metas do banco (uma vez por ano)
+  google.script.run.withSuccessHandler(function(t){
+    try{ _METAS=JSON.parse(t); }catch(e){ _METAS={gerais:[],pessoas:[],alvos:[]}; }
+    desenharPlanMetas(f, g, proj, ano);
+  }).withFailureHandler(function(){ desenharPlanMetas(f, g, proj, ano); }).lerMetas(+ano);
+}
+
+function metaMes(ano, mes){ // {entregas, entradas}
+  var r=(_METAS.gerais||[]).find(function(x){return +x.ano===+ano && +x.mes===+mes;});
+  return { entregas: r?r.meta_entregas:12, entradas: r?r.meta_entradas:10 };
+}
+
+function desenharPlanMetas(f, g, proj, ano){
+  var c=COL.PROJETOS||{}, P=DADOS.PROJETOS||[];
+  var mesAtual = (String(hoje.getFullYear())===String(ano)) ? hoje.getMonth() : 12; // 0-11; se ano passado, tudo real
+
+  // entregas e entradas REAIS por mês (do ano) — usando fim real (concluído) e início real
+  var entReais=Array(12).fill(0), entrReais=Array(12).fill(0);
+  P.forEach(function(r){
+    var fase=KEY(G(r,c.fase));
+    var ir=pdate(G(r,c.iniReal)), fr=pdate(G(r,c.fimReal));
+    if(fr && fase.indexOf("CONCLU")>=0 && String(fr.getFullYear())===String(ano)) entReais[fr.getMonth()]++;
+    if(ir && String(ir.getFullYear())===String(ano)) entrReais[ir.getMonth()]++;
+  });
+
+  // ---- gráfico Meta × Realizado (entregas) ----
+  var metaArr=[], realArr=[];
+  for(var m=0;m<12;m++){ metaArr.push(metaMes(ano,m+1).entregas); realArr.push(entReais[m]); }
+  barras("chMeta", MESES,
+    [{label:"Meta",data:metaArr,backgroundColor:HEX.cancel,borderRadius:4},
+     {label:"Realizado",data:realArr,backgroundColor:HEX.accent,borderRadius:4}]);
+
+  // ---- gráfico Entregas realizadas × Entradas efetuadas ----
+  barras("chEntEnt", MESES,
+    [{label:"Entradas",data:entrReais,backgroundColor:"#2F6FB0",borderRadius:4},
+     {label:"Entregas",data:entReais,backgroundColor:HEX.green,borderRadius:4}]);
+
+  // ---- TABELA DE PROJEÇÃO ANUAL ----
+  // andamento hoje = projetos cuja fase é de trabalho (não concluído/cancelado/pausado/não iniciado)
+  var andamentoHoje = P.filter(function(r){
+    var fase=KEY(G(r,c.fase));
+    return fase.indexOf("CONCLU")<0 && fase.indexOf("CANCEL")<0 && fase.indexOf("PAUS")<0 && fase.indexOf("NAO INICI")<0 && fase!=="";
+  }).length;
+  document.getElementById("pjBase").textContent=andamentoHoje;
+
+  var linhas=[], andamento=andamentoHoje;
+  for(var m2=0;m2<12;m2++){
+    var passado = m2 < mesAtual;
+    var mm=metaMes(ano,m2+1);
+    var entregas = passado ? entReais[m2] : mm.entregas;   // futuro = meta
+    var entradas = passado ? entrReais[m2] : mm.entradas;  // futuro = meta (10)
+    var inicial=andamento;
+    andamento = inicial - entregas + entradas;
+    linhas.push({mes:m2, inicial:inicial, entregas:entregas, entradas:entradas, saldo:andamento, futuro:!passado});
+  }
+  // tabela TRANSPOSTA: meses nas colunas, métricas nas linhas
+  var mesAbrev=["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+  var thMes='<th></th>'+linhas.map(function(l){
+    return '<th class="num'+(l.futuro?' fut':'')+'">'+mesAbrev[l.mes]+'</th>'; }).join("");
+  var linTipo='<tr class="tipoRow"><td></td>'+linhas.map(function(l){
+    return '<td class="num">'+(l.futuro?'<span class="badge s-ni">proj.</span>':'<span class="badge s-ok">real</span>')+'</td>'; }).join("")+'</tr>';
+  function linha_(rot,campo,bold){ return '<tr><td class="rot">'+rot+'</td>'+linhas.map(function(l){
+    var v=l[campo]; return '<td class="num'+(l.futuro?' fut':'')+'">'+(bold?'<b>'+v+'</b>':v)+'</td>'; }).join("")+'</tr>'; }
+  document.getElementById("tblProj").innerHTML=
+    '<thead><tr>'+thMes+'</tr></thead><tbody>'+
+    linha_("Em andamento (início)","inicial",false)+
+    linha_("Entregas","entregas",false)+
+    linha_("Entradas","entradas",false)+
+    linha_("Saldo (fim)","saldo",true)+
+    linTipo+
+    '</tbody>';
+  var saldoFim=linhas[11].saldo, tendencia=saldoFim<andamentoHoje?"reduzindo":saldoFim>andamentoHoje?"acumulando":"estável";
+  document.getElementById("projResumo").innerHTML=
+    'Começa com <b>'+andamentoHoje+'</b> em andamento e projeta terminar o ano com <b>'+saldoFim+'</b> ('+
+    (saldoFim<andamentoHoje?'<span style="color:var(--green)">carteira reduzindo — capacidade dá conta</span>':
+     saldoFim>andamentoHoje?'<span style="color:var(--red)">carteira acumulando — entra mais do que sai</span>':
+     'estável')+').';
+
+  // ---- Tempo médio × alvo por padrão ----
+  var pads=["STANDARD","PLUS","PREMIUM"];
+  var alvoDe=function(pad){ var a=(_METAS.alvos||[]).find(function(x){return x.etapa==="_PROJETO" && KEY(x.padrao)===pad;}); return a?a.dias_alvo:null; };
+  var medioPad=pads.map(function(pad){
+    var ls=proj.filter(function(r){return KEY(G(r,c.padrao))===pad;})
+      .map(function(r){return diasUteis(pdate(G(r,c.iniReal)),pdate(G(r,c.fimReal)));})
+      .filter(function(x){return x!=null && x>0 && x<400;});
+    return media(ls)||0;
+  });
+  barrasH("chLead", pads.map(cap),
+    [{label:"Tempo médio real",data:medioPad,backgroundColor:HEX.accent,borderRadius:4},
+     {label:"Alvo",data:pads.map(alvoDe).map(function(x){return x||0;}),backgroundColor:HEX.amber,borderRadius:4}],
+    true);
+
+  // ---- Tempo médio por etapa (gargalos), filtrável por padrão ----
+  renderTempoEtapa(f);
+
+  // preenche o formulário de pessoas
+  var pv=document.getElementById("pmPessoas");
+  if(pv && !pv._feito){
+    pv.innerHTML=PESSOAS.map(function(p){
+      return '<div class="g2" style="align-items:center;margin-bottom:6px"><label>'+p.nome+'</label>'+
+        '<input type="number" data-pessoa="'+p.key+'" class="pmMetaP" style="width:100%;padding:8px;border:1px solid var(--line2);border-radius:8px" placeholder="—"></div>';
+    }).join("");
+    pv._feito=true;
+  }
+}
+
+function exportarPlanMetas(){
+  if(typeof XLSX==="undefined"){ alert("Biblioteca de exportação carregando, tente de novo."); return; }
+  var wb=XLSX.utils.book_new();
+  // aba 1: projeção anual (lê a tabela renderizada)
+  // lê a tabela transposta (linhas = métricas, colunas = meses) e exporta com meses nas colunas
+  var linhas=[];
+  var head=["Métrica"]; [].forEach.call(document.querySelectorAll("#tblProj thead th"),function(th,i){ if(i>0) head.push(th.textContent.trim()); });
+  linhas.push(head);
+  [].forEach.call(document.querySelectorAll("#tblProj tbody tr"),function(tr){
+    if(tr.classList.contains("tipoRow")) return;
+    var row=[]; [].forEach.call(tr.querySelectorAll("td"),function(td,i){ row.push(i===0?td.textContent.trim():(+td.textContent||0)); });
+    linhas.push(row);
+  });
+  var ws1=XLSX.utils.aoa_to_sheet(linhas);
+  ws1["!cols"]=[{wch:22}].concat(Array(12).fill({wch:7}));
+  XLSX.utils.book_append_sheet(wb,ws1,"Projeção anual");
+  // aba 2: metas gerais e por pessoa
+  var mg=[["Ano","Mês","Meta Entregas","Meta Entradas"]];
+  (_METAS.gerais||[]).sort(function(a,b){return a.mes-b.mes;}).forEach(function(r){ mg.push([r.ano,r.mes,r.meta_entregas,r.meta_entradas]); });
+  var ws2=XLSX.utils.aoa_to_sheet(mg); ws2["!cols"]=[{wch:8},{wch:6},{wch:14},{wch:14}];
+  XLSX.utils.book_append_sheet(wb,ws2,"Metas gerais");
+  var mp=[["Pessoa","Ano","Mês","Meta"]];
+  (_METAS.pessoas||[]).forEach(function(r){ mp.push([r.pessoa,r.ano,r.mes,r.meta]); });
+  var ws3=XLSX.utils.aoa_to_sheet(mp); ws3["!cols"]=[{wch:14},{wch:8},{wch:6},{wch:8}];
+  XLSX.utils.book_append_sheet(wb,ws3,"Metas por pessoa");
+  XLSX.writeFile(wb,"FastTennis_Planejamento_"+fmtdA(hoje).replace(/\//g,"-")+".xlsx");
+}
+
+function renderTempoEtapa(f){
+  var c=COL.PROJETOS||{}, ct=COL.TAREFAS||{}, P=DADOS.PROJETOS||[];
+  var padFiltro=(document.getElementById("etPad")||{}).value||"";
+  // padrão de cada projeto
+  var padDe={}; P.forEach(function(r){ padDe[txt(G(r,c.id))]=KEY(G(r,c.padrao)); });
+  var soma={}, cont={};
+  (DADOS.TAREFAS||[]).forEach(function(r){
+    var pid=txt(G(r,ct.idProj)); if(padFiltro && padDe[pid]!==padFiltro) return;
+    var ir=pdate(G(r,ct.iniReal)), fr=pdate(G(r,ct.fimReal)); if(!ir||!fr) return;
+    var dias=diasUteis(ir,fr); if(dias==null||dias<0||dias>180) return;
+    var et=KEY(G(r,ct.etapa)); soma[et]=(soma[et]||0)+dias; cont[et]=(cont[et]||0)+1;
+  });
+  var etapas=Object.keys(soma).map(function(e){return {etapa:e, media:Math.round(soma[e]/cont[e])};})
+    .sort(function(a,b){return b.media-a.media;}).slice(0,10);
+  barrasH("chEtapa", etapas.map(function(e){return cap(e.etapa);}),
+    [{label:"Dias úteis médios",data:etapas.map(function(e){return e.media;}),backgroundColor:HEX.accent2,borderRadius:4}], true);
 }
 
 /* ---- tempo medio do fluxo: ate executivo / ate complementares / com projeto legal ---- */
@@ -2462,7 +2859,7 @@ function renderCapacidade(){
   { const _r=document.getElementById("riscos"); if(_r) _r.innerHTML=conf.length
     ? conf.map(x=>`<div class="conf"><span><b>${nm(x.resp)}</b><div class="t">semana de ${fmtd(x.ws)} · ${Object.keys(x.itens).slice(0,2).join(", ")}${Object.keys(x.itens).length>2?"…":""}</div></span><span style="color:var(--red);font-weight:700;white-space:nowrap">${h1(x.load)}h / ${x.cap}h</span></div>`).join("")
     : `<div style="color:var(--muted);font-size:13px;padding:8px 0">Nenhuma semana acima da capacidade. 👍</div>`; }
-  renderSugestoes(conf,aus);
+  if(document.getElementById('sugestoes')) renderSugestoes(conf,aus);
   return conf;
 }
 
@@ -2485,6 +2882,7 @@ function nomeProjeto(pid){
 function cargaNaSemana(sem,ws,resp){ const e=sem[ws.getTime()+"|"+resp]; return e?e.horas:0; }
 
 function renderSugestoes(conf,aus){
+  if(!document.getElementById('sugestoes')) return;
   const el=document.getElementById("sugestoes");
   if(!conf.length){ el.innerHTML='<div style="color:var(--muted);font-size:13px;padding:6px 0">Nenhuma semana em conflito nos próximos 30 dias. Nada a remanejar. 👍</div>'; return; }
   const nm=k=>{const p=PESSOAS.find(x=>x.key===k);return p?p.nome:k;};
@@ -2867,7 +3265,9 @@ const BALDES={
   concluido:{t:"Projetos concluídos",d:"Fim Real dentro do período selecionado."},
   ativos:{t:"Projetos em andamento",d:"Já começaram e ainda não terminaram até o fim do período. Inclui os atrasados."},
   atrasado:{t:"Projetos atrasados",d:"Em andamento e com Fim Planejado já vencido."},
-  naoiniciado:{t:"Projetos não iniciados",d:"Sem Início Real até o fim do período."},
+  andamento:{t:"Projetos em andamento",d:"Em execução e dentro do prazo (atrasados aparecem no card próprio)."},
+  naoiniciado:{t:"Projetos não iniciados",d:"Fase Não Iniciado."},
+  pausado:{t:"Projetos pausados",d:"Fase PAUSADO."},
   cancelado:{t:"Projetos cancelados",d:"Fase CANCELADO."}
 };
 function abrirLista(balde,g,f){
@@ -2886,12 +3286,16 @@ function abrirLista(balde,g,f){
            b==="cancelado"?'<span class="badge s-cx">Cancelado</span>':
                            '<span class="badge s-ni">Não iniciado</span>';};
   const dt=v=>{const d=pdate(v);return d?fmtd(d)+"/"+d.getFullYear():"—";};
+  // dias de atraso do fim planejado (só se vencido e não concluído)
+  const diasAtr=r=>{ const fp=pdate(G(r,c.fimPlan)), fr=pdate(G(r,c.fimReal));
+    if(fr||!fp) return ""; if(fp>=hoje) return "";
+    return Math.round((hoje-fp)/86400000); };
   document.getElementById("mdBody").innerHTML = L.length
-    ? `<table><thead><tr><th>ID</th><th>Projeto</th><th>Fase</th><th>Padrão</th><th>Início real</th><th>Fim planej.</th><th>Fim real</th><th>Situação</th></tr></thead><tbody>`+
-      L.sort((a,b)=>(+String(G(a,c.id)).replace(/\D/g,"")||0)-(+String(G(b,c.id)).replace(/\D/g,"")||0))
-       .map(r=>`<tr><td>${txt(G(r,c.id))}</td><td>${txt(G(r,c.nome))}</td><td>${txt(G(r,c.fase))}</td>
+    ? `<table><thead><tr><th>ID</th><th>Projeto</th><th>Fase</th><th>Padrão</th><th>Início real</th><th>Fim planej.</th><th>Fim real</th><th>Dias atraso</th><th>Situação</th></tr></thead><tbody>`+
+      L.sort((a,b)=>(diasAtr(b)||0)-(diasAtr(a)||0) || (+String(G(a,c.id)).replace(/\D/g,"")||0)-(+String(G(b,c.id)).replace(/\D/g,"")||0))
+       .map(r=>{const da=diasAtr(r); return `<tr><td>${txt(G(r,c.id))}</td><td>${txt(G(r,c.nome))}</td><td>${txt(G(r,c.fase))}</td>
          <td>${txt(G(r,c.padrao))}</td><td>${dt(G(r,c.iniReal))}</td><td>${dt(G(r,c.fimPlan))}</td>
-         <td>${dt(G(r,c.fimReal))}</td><td>${bg(r)}</td></tr>`).join("")+`</tbody></table>`
+         <td>${dt(G(r,c.fimReal))}</td><td>${da?'<b style="color:var(--red)">'+da+' dias</b>':"—"}</td><td>${bg(r)}</td></tr>`;}).join("")+`</tbody></table>`
     : `<div style="padding:24px 0;color:var(--muted);font-size:13px">Nenhum projeto neste grupo para o período selecionado.</div>`;
   document.getElementById("mdOv").classList.add("on");
 }
@@ -3383,7 +3787,69 @@ document.getElementById("btPdf").addEventListener("click",()=>window.print());
   },{passive:true});
 })();
 
-carregar(); if(ATUALIZAR_AUTO_MIN>0) setInterval(carregar,ATUALIZAR_AUTO_MIN*60000);
+/* ---- fluxo de LOGIN (Supabase) ---- */
+async function definirUsuario(){
+  const {data:{user}}=await sb.auth.getUser();
+  if(!user) return false;
+  const {data:perfil}=await sb.from("perfis").select("nome,papel").eq("id",user.id).single();
+  const papel=perfil?.papel||"leitor";
+  USUARIO={ ok:true, id:user.id, email:user.email, nome:perfil?.nome||user.email, papel:papel,
+    podeEditar:["admin","editor"].includes(papel),
+    podeConcluir:["admin","editor","engenharia"].includes(papel),
+    podeAprovar:["admin","comite"].includes(papel),
+    interno:["admin","editor"].includes(papel) };
+  return true;
+}
+async function entrarNoApp(){
+  document.getElementById("loginOv").style.display="none";
+  window._papelAplicado=false;
+  carregar();
+  if(ATUALIZAR_AUTO_MIN>0) setInterval(carregar,ATUALIZAR_AUTO_MIN*60000);
+}
+async function fazerLogin(){
+  const email=document.getElementById("lgEmail").value.trim();
+  const senha=document.getElementById("lgSenha").value;
+  const bt=document.getElementById("lgBt"), erro=document.getElementById("lgErro");
+  erro.style.display="none"; bt.disabled=true; bt.textContent="Entrando…";
+  const {error}=await sb.auth.signInWithPassword({email,password:senha});
+  if(error){ erro.textContent="E-mail ou senha incorretos."; erro.style.display="block"; bt.disabled=false; bt.textContent="Entrar"; return; }
+  await definirUsuario(); entrarNoApp();
+}
+/* ---- eventos Planejamento e Metas ---- */
+(function(){
+  var cfg=document.getElementById("pmCfg"), ov=document.getElementById("pmOv"), x=document.getElementById("pmX");
+  if(cfg) cfg.addEventListener("click",function(){ if(ov) ov.style.display="flex"; });
+  if(x) x.addEventListener("click",function(){ if(ov) ov.style.display="none"; });
+  if(ov) ov.addEventListener("click",function(e){ if(e.target===ov) ov.style.display="none"; });
+  var etPad=document.getElementById("etPad");
+  if(etPad) etPad.addEventListener("change",function(){ renderTempoEtapa(getF()); });
+  var sv=document.getElementById("pmSalvar");
+  if(sv) sv.addEventListener("click",function(){
+    var msg=document.getElementById("pmMsg");
+    var d={ano:+document.getElementById("pmAno").value, entregas:+document.getElementById("pmEntregas").value,
+            entradas:+document.getElementById("pmEntradas").value, pessoas:[] };
+    [].forEach.call(document.querySelectorAll(".pmMetaP"),function(inp){
+      if(inp.value!=="") d.pessoas.push({pessoa:inp.getAttribute("data-pessoa"), meta:+inp.value});
+    });
+    sv.disabled=true; sv.textContent="Salvando…";
+    google.script.run.withSuccessHandler(function(t){
+      var r=JSON.parse(t); msg.style.color="var(--green)"; msg.textContent="✓ "+r.msg;
+      sv.disabled=false; sv.textContent="Salvar metas";
+      setTimeout(function(){ if(ov)ov.style.display="none"; carregar(); },800);
+    }).withFailureHandler(function(e){ msg.style.color="var(--red)"; msg.textContent="Não deu certo: "+(e.message||e);
+      sv.disabled=false; sv.textContent="Salvar metas"; }).salvarMetas(JSON.stringify(d));
+  });
+  // exportar Excel (usa a mesma lib SheetJS já carregada)
+  var ex=document.getElementById("pmExport");
+  if(ex) ex.addEventListener("click",exportarPlanMetas);
+})();
+document.getElementById("lgBt").addEventListener("click",fazerLogin);
+(function(){ var b=document.getElementById("btSair"); if(b) b.addEventListener("click",async()=>{ await sb.auth.signOut(); location.reload(); }); })();
+document.getElementById("lgSenha").addEventListener("keydown",e=>{if(e.key==="Enter")fazerLogin();});
+/* se já houver sessão salva, entra direto; senão mostra o login */
+sb.auth.getSession().then(async({data})=>{
+  if(data.session){ await definirUsuario(); entrarNoApp(); }
+});
 </script>
 </body>
 </html>

@@ -9,6 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-datalabels/2.2.0/chartjs-plugin-datalabels.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
@@ -926,7 +927,10 @@ ul.prev .muted{color:var(--muted);font-size:11px}
       <div class="fld"><label>Estacionamento</label><select id="nvEEst"><option value="">— manter —</option><option value="Sim">Sim</option><option value="Não">Não</option></select></div>
       <div class="fld"><label>Área do lote (m²)</label><input type="number" id="nvEArea" min="0" step="1"></div>
     </div>
-    <div class="fld"><label>Início previsto</label><input type="date" id="nvEIni"></div>
+    <div class="g2">
+      <div class="fld"><label>Início previsto</label><input type="date" id="nvEIni"></div>
+      <div class="fld"><label>Fim previsto</label><input type="date" id="nvEFim"></div>
+    </div>
     <div class="nvsec">Dados da obra</div>
     <div class="fld"><label>Endereço da obra</label><input type="text" id="nvEEndObra" maxlength="120"></div>
     <div class="g2">
@@ -1222,6 +1226,12 @@ const SB_ACOES={
       });
       const e2=await sb.from("tarefas").insert(tarefas);
       if(e2.error) throw new Error("Projeto criado, mas erro ao gerar tarefas: "+e2.error.message);
+      // grava início/fim planejado do PROJETO = menor início / maior fim das tarefas
+      if(tarefas.length){
+        const inis=tarefas.map(function(t){return t.inicio_plan;}).filter(Boolean).sort();
+        const fins=tarefas.map(function(t){return t.fim_plan;}).filter(Boolean).sort();
+        await sb.from("projetos").update({inicio_plan:inis[0], fim_plan:fins[fins.length-1]}).eq("id",id);
+      }
     }
     return JSON.stringify({ok:true, msg:"Projeto "+id+" criado"+(d.gerarTarefas?" com 10 tarefas":"")});
   },
@@ -1237,13 +1247,25 @@ const SB_ACOES={
     return JSON.stringify({ok:true, msg:"Tarefa criada"});
   },
 
-  async lancarHoras(projId,etapa,horas,descricao,dataStr){
+  async lancarHoras(projId,etapa,horas,descricao,dataStr,horaIni,horaFim){
     if(!USUARIO.podeConcluir) throw new Error("Sem permissão.");
-    const ins={projeto_id:projId, etapa:etapa||null, horas:+String(horas).replace(",",".")||0,
-      descricao:descricao||null, pessoa:USUARIO.nome, data:dataStr?br2iso(dataStr):new Date().toISOString().split("T")[0]};
+    var total=+String(horas||"").replace(",",".")||0;
+    // se veio por intervalo (início/fim), calcula a duração em horas
+    if((!total || total<=0) && horaIni && horaFim){
+      var a=String(horaIni).split(":"), b=String(horaFim).split(":");
+      if(a.length>=2 && b.length>=2){
+        var min=(+b[0]*60+ +b[1])-(+a[0]*60+ +a[1]);
+        if(min>0) total=Math.round(min/60*100)/100;
+      }
+    }
+    if(!total || total<=0) throw new Error("Informe as horas (ou um intervalo válido de início e fim).");
+    var descFinal=descricao||"";
+    if(horaIni && horaFim) descFinal=(descFinal?descFinal+" · ":"")+"("+horaIni+"–"+horaFim+")";
+    const ins={projeto_id:projId, etapa:etapa||null, horas:total,
+      descricao:descFinal||null, pessoa:USUARIO.nome, data:dataStr?br2iso(dataStr):new Date().toISOString().split("T")[0]};
     const {error}=await sb.from("horas").insert(ins);
     if(error) throw new Error(error.message);
-    return JSON.stringify({ok:true, msg:"Horas lançadas"});
+    return JSON.stringify({ok:true, msg:"Horas lançadas ("+total+"h)"});
   },
 
   async adicionarObservacao(projId,texto){
@@ -1284,6 +1306,16 @@ const SB_ACOES={
       if(e2.error) throw new Error(e2.error.message);
     }
     return JSON.stringify({ok:true, msg:"Metas salvas para "+d.ano});
+  },
+
+  async excluirProjeto(projId){
+    if(!USUARIO.podeEditar) throw new Error("Sem permissão para excluir.");
+    // apaga tarefas e horas do projeto e depois o projeto
+    await sb.from("tarefas").delete().eq("projeto_id",projId);
+    await sb.from("horas").delete().eq("projeto_id",projId);
+    const {error}=await sb.from("projetos").delete().eq("id",projId);
+    if(error) throw new Error(error.message);
+    return JSON.stringify({ok:true, msg:"Projeto "+projId+" excluído"});
   },
 
   /* ---- gestão de usuários (perfis) ---- */
@@ -2125,7 +2157,8 @@ function pjAbrirFicha(pid){
     botoes='<label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted)">Fase: '+
              '<select id="pjfFase" class="tksel">'+optsFase+'</select></label>'+
            '<button class="pjf-btn prim" id="pjfEditar">Editar dados do projeto</button>'+
-           '<button class="pjf-btn" id="pjfNovaTarefa">Adicionar tarefa</button>';
+           '<button class="pjf-btn" id="pjfNovaTarefa">Adicionar tarefa</button>'+
+           '<button class="pjf-btn" id="pjfExcluir" style="border-color:var(--red);color:var(--red)">Excluir projeto</button>';
   }
 
   var seloAtraso = pjTemAtraso_(pid) ? '<span class="pjf-atraso">⚠ Tarefa(s) em atraso</span>' : '';
@@ -2158,6 +2191,15 @@ function pjAbrirFicha(pid){
       .withFailureHandler(function(e){ self.disabled=false;
         alert("Não deu certo: "+(e&&e.message?e.message:e)); })
       .mudarFaseProjeto(pid, nova, TOKEN);
+  };
+  var bex=document.getElementById("pjfExcluir");
+  if(bex) bex.onclick=function(){
+    if(!confirm("Excluir o projeto "+pid+"?\n\nIsso apaga o projeto e TODAS as suas tarefas e horas. Não dá para desfazer."))return;
+    if(!confirm("Tem certeza? Digite OK na próxima. Esta ação é PERMANENTE."))return;
+    bex.disabled=true; bex.textContent="Excluindo…";
+    google.script.run.withSuccessHandler(function(){ pjFecharFicha(); carregar(); })
+      .withFailureHandler(function(e){ bex.disabled=false; bex.textContent="Excluir projeto"; alert("Não deu certo: "+(e.message||e)); })
+      .excluirProjeto(pid);
   };
   var be=document.getElementById("pjfEditar");
   if(be) be.onclick=function(){ pjFecharFicha(); tkEditar(pid); };
@@ -2585,7 +2627,8 @@ function metaMes(ano, mes){ // {entregas, entradas}
 
 function desenharPlanMetas(f, g, proj, ano){
   var c=COL.PROJETOS||{}, P=DADOS.PROJETOS||[];
-  var mesAtual = (String(hoje.getFullYear())===String(ano)) ? hoje.getMonth() : 12; // 0-11; se ano passado, tudo real
+  // mês corrente = índice do mês vigente; ele CONTA como real (parcial). Ao virar o mês, atualiza sozinho.
+  var mesCorrente = (String(hoje.getFullYear())===String(ano)) ? hoje.getMonth() : 11; // 0-11; ano passado: tudo real
 
   // entregas e entradas REAIS por mês (do ano) — usando fim real (concluído) e início real
   var entReais=Array(12).fill(0), entrReais=Array(12).fill(0);
@@ -2618,7 +2661,7 @@ function desenharPlanMetas(f, g, proj, ano){
 
   var linhas=[], andamento=andamentoHoje;
   for(var m2=0;m2<12;m2++){
-    var passado = m2 < mesAtual;
+    var passado = m2 <= mesCorrente;   // inclui o mês vigente como real/parcial
     var mm=metaMes(ano,m2+1);
     var entregas = passado ? entReais[m2] : mm.entregas;   // futuro = meta
     var entradas = passado ? entrReais[m2] : mm.entradas;  // futuro = meta (10)
@@ -3218,21 +3261,23 @@ x,y-6);ctx.fillStyle="#7A858C";ctx.font="600 10px Inter,Arial";ctx.fillText("PRO
 Chart.register(centerText);
 const baseLegend={position:"bottom",labels:{boxWidth:10,boxHeight:10,usePointStyle:true,pointStyle:"circle",padding:14,font:{size:11}}};
 const clickOpt=cb=>cb?{onClick:(e,els)=>{if(els.length)cb(els[0].index);},onHover:(e,els)=>{e.native.target.style.cursor=els.length?"pointer":"default";}}:{};
+if(window.ChartDataLabels){ Chart.register(window.ChartDataLabels); }
+function _dl(mostrar){ return {datalabels:{ display:mostrar!==false, color:"#243b40", anchor:"end", align:"end", offset:2, font:{size:10,weight:"600"}, formatter:function(v){ return (v||v===0)?v:""; } }}; }
 function donut(id,l,d,c,t){destroy(id);charts[id]=new Chart(document.getElementById(id),{type:"doughnut",data:{labels:l,datasets:[{data:d,backgroundColor:c,
-borderWidth:2,borderColor:"#fff"}]},options:{responsive:true,maintainAspectRatio:false,cutout:"72%",plugins:{legend:baseLegend,centerText:{text:t}}}});
+borderWidth:2,borderColor:"#fff"}]},options:{responsive:true,maintainAspectRatio:false,cutout:"72%",plugins:{legend:baseLegend,centerText:{text:t},datalabels:{display:function(ctx){return ctx.dataset.data[ctx.dataIndex]>0;},color:"#fff",font:{size:11,weight:"700"},formatter:function(v){return v>0?v:"";}}}}});
 }
 function barras(id,l,ds,nl,cb){destroy(id);charts[id]=new Chart(document.getElementById(id),{type:"bar",data:{labels:l,datasets:ds},options:Object.assign({responsive:true,
-maintainAspectRatio:false,plugins:{legend:nl?{display:false}:baseLegend},scales:{x:{grid:{display:false},ticks:{maxRotation:45,font:{size:10}}},y:{beginAtZero:true,
+maintainAspectRatio:false,plugins:{legend:nl?{display:false}:baseLegend,datalabels:{display:true,anchor:"end",align:"end",offset:1,color:"#243b40",font:{size:9.5,weight:"600"},formatter:function(v){return(v||v===0)&&v!==0?v:(v===0?"":v);}}},scales:{x:{grid:{display:false},ticks:{maxRotation:45,font:{size:10}}},y:{beginAtZero:true,
 grid:GRID,border:{display:false},ticks:{precision:0}}}},clickOpt(cb))});}
 function barrasH(id,l,ds,nl,cb){destroy(id);charts[id]=new Chart(document.getElementById(id),{type:"bar",data:{labels:l,datasets:ds},options:Object.assign({indexAxis:"y",
-responsive:true,maintainAspectRatio:false,plugins:{legend:nl?{display:false}:baseLegend},scales:{x:{beginAtZero:true,grid:GRID,border:{display:false}},
+responsive:true,maintainAspectRatio:false,plugins:{legend:nl?{display:false}:baseLegend,datalabels:{display:true,anchor:"end",align:"end",offset:2,color:"#243b40",font:{size:9.5,weight:"600"},formatter:function(v){return(v||v===0)?v:"";}}},scales:{x:{beginAtZero:true,grid:GRID,border:{display:false}},
 y:{grid:{display:false},ticks:{font:{size:10}}}}},clickOpt(cb))});}
 function barrasStack(id,l,ds,cb){destroy(id);charts[id]=new Chart(document.getElementById(id),{type:"bar",data:{labels:l,datasets:ds},options:Object.assign({responsive:true,
-maintainAspectRatio:false,plugins:{legend:baseLegend},scales:{x:{stacked:true,grid:{display:false},ticks:{maxRotation:45,font:{size:9.5}}},y:{stacked:true,
+maintainAspectRatio:false,plugins:{legend:baseLegend,datalabels:{display:function(ctx){return ctx.dataset.data[ctx.dataIndex]>0;},color:"#fff",font:{size:9,weight:"600"},formatter:function(v){return v>0?v:"";}}},scales:{x:{stacked:true,grid:{display:false},ticks:{maxRotation:45,font:{size:9.5}}},y:{stacked:true,
 beginAtZero:true,grid:GRID,border:{display:false},ticks:{precision:0}}}},clickOpt(cb))});}
 function linha(id,l,se,cb){destroy(id);charts[id]=new Chart(document.getElementById(id),{type:"line",data:{labels:l,datasets:se.map(s=>({label:s.label,
 data:s.data,borderColor:s.color,backgroundColor:s.color+"22",borderWidth:2.5,tension:.35,pointRadius:2.5,pointBackgroundColor:s.color,fill:true}))},options:Object.assign({responsive:true,
-maintainAspectRatio:false,plugins:{legend:baseLegend},scales:{x:{grid:{display:false}},y:{beginAtZero:true,grid:GRID,border:{display:false},ticks:{precision:0}}}},
+maintainAspectRatio:false,plugins:{legend:baseLegend,datalabels:{display:true,align:"top",offset:3,color:"#243b40",font:{size:9,weight:"600"},formatter:function(v){return(v||v===0)?v:"";}}},scales:{x:{grid:{display:false}},y:{beginAtZero:true,grid:GRID,border:{display:false},ticks:{precision:0}}}},
 clickOpt(cb))});}
 
 /* ---------- ações rápidas ---------- */
@@ -3400,10 +3445,23 @@ function abrirLista(balde,g,f){
   const diasAtr=r=>{ const fp=pdate(G(r,c.fimPlan)), fr=pdate(G(r,c.fimReal));
     if(fr||!fp) return ""; if(fp>=hoje) return "";
     return Math.round((hoje-fp)/86400000); };
+  // responsável do projeto = responsável da 1ª tarefa pendente (fase atual); senão o mais frequente
+  const respProj=pid=>{
+    const ct=COL.TAREFAS||{};
+    const ts=(DADOS.TAREFAS||[]).filter(t=>txt(G(t,ct.idProj))===pid);
+    if(!ts.length) return "—";
+    const pend=ts.filter(t=>KEY(G(t,ct.status)).indexOf("CONCLU")<0);
+    const alvo=pend.length?pend:ts;
+    // conta responsáveis
+    const cont={};
+    alvo.forEach(t=>respsDe(G(t,ct.resp)).forEach(p=>{cont[p]=(cont[p]||0)+1;}));
+    const top=Object.keys(cont).sort((a,b)=>cont[b]-cont[a])[0];
+    return top?cap(top):"—";
+  };
   document.getElementById("mdBody").innerHTML = L.length
-    ? `<table><thead><tr><th>ID</th><th>Projeto</th><th>Fase</th><th>Padrão</th><th>Início real</th><th>Fim planej.</th><th>Fim real</th><th>Dias atraso</th><th>Situação</th></tr></thead><tbody>`+
+    ? `<table><thead><tr><th>ID</th><th>Projeto</th><th>Responsável</th><th>Fase</th><th>Padrão</th><th>Início real</th><th>Fim planej.</th><th>Fim real</th><th>Dias atraso</th><th>Situação</th></tr></thead><tbody>`+
       L.sort((a,b)=>(diasAtr(b)||0)-(diasAtr(a)||0) || (+String(G(a,c.id)).replace(/\D/g,"")||0)-(+String(G(b,c.id)).replace(/\D/g,"")||0))
-       .map(r=>{const da=diasAtr(r); return `<tr><td>${txt(G(r,c.id))}</td><td>${txt(G(r,c.nome))}</td><td>${txt(G(r,c.fase))}</td>
+       .map(r=>{const da=diasAtr(r); return `<tr><td>${txt(G(r,c.id))}</td><td>${txt(G(r,c.nome))}</td><td>${respProj(txt(G(r,c.id)))}</td><td>${txt(G(r,c.fase))}</td>
          <td>${txt(G(r,c.padrao))}</td><td>${dt(G(r,c.iniReal))}</td><td>${dt(G(r,c.fimPlan))}</td>
          <td>${dt(G(r,c.fimReal))}</td><td>${da?'<b style="color:var(--red)">'+da+' dias</b>':"—"}</td><td>${bg(r)}</td></tr>`;}).join("")+`</tbody></table>`
     : `<div style="padding:24px 0;color:var(--muted);font-size:13px">Nenhum projeto neste grupo para o período selecionado.</div>`;
@@ -3657,6 +3715,10 @@ function carregarProjetoEdicao(){
   document.getElementById("nvEEst").value = "";
   const di=colI?pdate(G(r,colI)):null;
   document.getElementById("nvEIni").value = di?di.getFullYear()+"-"+("0"+(di.getMonth()+1)).slice(-2)+"-"+("0"+di.getDate()).slice(-2):"";
+  var colF=acharCol(cp,["fim planej","fim planejado"]);
+  var df=colF?pdate(G(r,colF)):null;
+  var elF=document.getElementById("nvEFim");
+  if(elF) elF.value = df?df.getFullYear()+"-"+("0"+(df.getMonth()+1)).slice(-2)+"-"+("0"+df.getDate()).slice(-2):"";
   /* campos novos de obra/franqueado (só preenche se a coluna existir) */
   function setV(elId, key){ var el=document.getElementById(elId); if(el) el.value = (cp[key]!=null&&cp[key]>=0)?txt(G(r,cp[key])):""; }
   setV("nvEEndObra","endObra"); setV("nvEPiso","piso"); setV("nvETipoEd","tipoEdif");
@@ -3675,6 +3737,7 @@ function salvarEdicaoProjeto(){
     estac:document.getElementById("nvEEst").value,
     area:document.getElementById("nvEArea").value,
     iniPlan:iso2br(document.getElementById("nvEIni").value),
+    fimPlan:iso2br(document.getElementById("nvEFim").value),
     endObra:document.getElementById("nvEEndObra").value.trim(),
     piso:document.getElementById("nvEPiso").value.trim(),
     tipoEdif:document.getElementById("nvETipoEd").value.trim(),

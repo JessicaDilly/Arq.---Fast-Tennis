@@ -52,7 +52,7 @@ main{padding:22px 26px 48px;max-width:1320px;margin:0 auto}
 .panel{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:16px 18px;box-shadow:var(--shadow)}
 .panel h3{margin:0 0 14px;font-size:13.5px;color:var(--ink);font-weight:600;letter-spacing:-.2px}
 .col3{grid-column:span 3}.col4{grid-column:span 4}.col5{grid-column:span 5}.col6{grid-column:span 6}.col7{grid-column:span 7}.col8{grid-column:span 8}.col12{grid-column:span 12}
-.chart-wrap{position:relative;height:250px}
+.chart-wrap{position:relative;height:280px;padding:6px 4px}
 table{width:100%;border-collapse:collapse;font-size:12.5px}
 th,td{text-align:left;padding:8px;border-bottom:1px solid var(--line2)}
 th{color:var(--muted);font-weight:600;text-transform:uppercase;font-size:10px;letter-spacing:.5px}
@@ -3267,17 +3267,18 @@ function donut(id,l,d,c,t){destroy(id);charts[id]=new Chart(document.getElementB
 borderWidth:2,borderColor:"#fff"}]},options:{responsive:true,maintainAspectRatio:false,cutout:"72%",plugins:{legend:baseLegend,centerText:{text:t},datalabels:{display:function(ctx){return ctx.dataset.data[ctx.dataIndex]>0;},color:"#fff",font:{size:11,weight:"700"},formatter:function(v){return v>0?v:"";}}}}});
 }
 function barras(id,l,ds,nl,cb){destroy(id);charts[id]=new Chart(document.getElementById(id),{type:"bar",data:{labels:l,datasets:ds},options:Object.assign({responsive:true,
-maintainAspectRatio:false,plugins:{legend:nl?{display:false}:baseLegend,datalabels:{display:true,anchor:"end",align:"end",offset:1,color:"#243b40",font:{size:9.5,weight:"600"},formatter:function(v){return(v||v===0)&&v!==0?v:(v===0?"":v);}}},scales:{x:{grid:{display:false},ticks:{maxRotation:45,font:{size:10}}},y:{beginAtZero:true,
+maintainAspectRatio:false,layout:{padding:{top:18}},plugins:{legend:nl?{display:false}:baseLegend,datalabels:{display:true,anchor:"end",align:"end",offset:1,color:"#243b40",font:{size:9.5,weight:"600"},formatter:function(v){return v>0?v:"";}}},scales:{x:{grid:{display:false},ticks:{maxRotation:45,font:{size:10}}},y:{beginAtZero:true,
 grid:GRID,border:{display:false},ticks:{precision:0}}}},clickOpt(cb))});}
 function barrasH(id,l,ds,nl,cb){destroy(id);charts[id]=new Chart(document.getElementById(id),{type:"bar",data:{labels:l,datasets:ds},options:Object.assign({indexAxis:"y",
-responsive:true,maintainAspectRatio:false,plugins:{legend:nl?{display:false}:baseLegend,datalabels:{display:true,anchor:"end",align:"end",offset:2,color:"#243b40",font:{size:9.5,weight:"600"},formatter:function(v){return(v||v===0)?v:"";}}},scales:{x:{beginAtZero:true,grid:GRID,border:{display:false}},
+responsive:true,maintainAspectRatio:false,layout:{padding:{right:28}},plugins:{legend:nl?{display:false}:baseLegend,datalabels:{display:true,anchor:"end",align:"end",offset:2,color:"#243b40",font:{size:9.5,weight:"600"},formatter:function(v){return v>0?v:"";}}},scales:{x:{beginAtZero:true,grid:GRID,border:{display:false}},
 y:{grid:{display:false},ticks:{font:{size:10}}}}},clickOpt(cb))});}
 function barrasStack(id,l,ds,cb){destroy(id);charts[id]=new Chart(document.getElementById(id),{type:"bar",data:{labels:l,datasets:ds},options:Object.assign({responsive:true,
 maintainAspectRatio:false,plugins:{legend:baseLegend,datalabels:{display:function(ctx){return ctx.dataset.data[ctx.dataIndex]>0;},color:"#fff",font:{size:9,weight:"600"},formatter:function(v){return v>0?v:"";}}},scales:{x:{stacked:true,grid:{display:false},ticks:{maxRotation:45,font:{size:9.5}}},y:{stacked:true,
 beginAtZero:true,grid:GRID,border:{display:false},ticks:{precision:0}}}},clickOpt(cb))});}
-function linha(id,l,se,cb){destroy(id);charts[id]=new Chart(document.getElementById(id),{type:"line",data:{labels:l,datasets:se.map(s=>({label:s.label,
-data:s.data,borderColor:s.color,backgroundColor:s.color+"22",borderWidth:2.5,tension:.35,pointRadius:2.5,pointBackgroundColor:s.color,fill:true}))},options:Object.assign({responsive:true,
-maintainAspectRatio:false,plugins:{legend:baseLegend,datalabels:{display:true,align:"top",offset:3,color:"#243b40",font:{size:9,weight:"600"},formatter:function(v){return(v||v===0)?v:"";}}},scales:{x:{grid:{display:false}},y:{beginAtZero:true,grid:GRID,border:{display:false},ticks:{precision:0}}}},
+function linha(id,l,se,cb){destroy(id);charts[id]=new Chart(document.getElementById(id),{type:"line",data:{labels:l,datasets:se.map((s,idx)=>({label:s.label,
+data:s.data,borderColor:s.color,backgroundColor:s.color+"22",borderWidth:2.5,tension:.35,pointRadius:2.5,pointBackgroundColor:s.color,fill:true,
+datalabels:{align:s.dlAlign||(idx===0?"top":"bottom"),anchor:"center",color:s.color,offset:4,font:{size:9,weight:"700"},formatter:function(v){return v>0?v:"";}}}))},options:Object.assign({responsive:true,
+maintainAspectRatio:false,layout:{padding:{top:14,bottom:14}},plugins:{legend:baseLegend,datalabels:{display:true}},scales:{x:{grid:{display:false}},y:{beginAtZero:true,grid:GRID,border:{display:false},ticks:{precision:0}}}},
 clickOpt(cb))});}
 
 /* ---------- ações rápidas ---------- */
@@ -3458,10 +3459,20 @@ function abrirLista(balde,g,f){
     const top=Object.keys(cont).sort((a,b)=>cont[b]-cont[a])[0];
     return top?cap(top):"—";
   };
+  // tempo-alvo por padrão (dias úteis): Standard 15, Plus 25, Premium 40
+  const ALVO={STANDARD:15,PLUS:25,PREMIUM:40};
+  // projeto excede o tempo estimado se já passou o alvo do padrão desde o início real e não concluiu
+  const excedeTempo=r=>{
+    const fr=pdate(G(r,c.fimReal)); if(fr) return false;          // já concluído
+    const ir=pdate(G(r,c.iniReal)); if(!ir) return false;          // ainda não começou
+    const alvo=ALVO[KEY(G(r,c.padrao))]; if(!alvo) return false;
+    const du=diasUteis(ir,hoje); return du!=null && du>alvo;
+  };
   document.getElementById("mdBody").innerHTML = L.length
     ? `<table><thead><tr><th>ID</th><th>Projeto</th><th>Responsável</th><th>Fase</th><th>Padrão</th><th>Início real</th><th>Fim planej.</th><th>Fim real</th><th>Dias atraso</th><th>Situação</th></tr></thead><tbody>`+
       L.sort((a,b)=>(diasAtr(b)||0)-(diasAtr(a)||0) || (+String(G(a,c.id)).replace(/\D/g,"")||0)-(+String(G(b,c.id)).replace(/\D/g,"")||0))
-       .map(r=>{const da=diasAtr(r); return `<tr><td>${txt(G(r,c.id))}</td><td>${txt(G(r,c.nome))}</td><td>${respProj(txt(G(r,c.id)))}</td><td>${txt(G(r,c.fase))}</td>
+       .map(r=>{const da=diasAtr(r); const exc=excedeTempo(r);
+         return `<tr${exc?' style="background:#fff3e0;border-left:3px solid #E8871E"':''}><td>${txt(G(r,c.id))}${exc?' <span title="Passou do tempo estimado do padrão" style="color:#E8871E">⚠</span>':''}</td><td>${txt(G(r,c.nome))}</td><td>${respProj(txt(G(r,c.id)))}</td><td>${txt(G(r,c.fase))}</td>
          <td>${txt(G(r,c.padrao))}</td><td>${dt(G(r,c.iniReal))}</td><td>${dt(G(r,c.fimPlan))}</td>
          <td>${dt(G(r,c.fimReal))}</td><td>${da?'<b style="color:var(--red)">'+da+' dias</b>':"—"}</td><td>${bg(r)}</td></tr>`;}).join("")+`</tbody></table>`
     : `<div style="padding:24px 0;color:var(--muted);font-size:13px">Nenhum projeto neste grupo para o período selecionado.</div>`;
@@ -4055,3 +4066,4 @@ sb.auth.getSession().then(async({data})=>{
 </script>
 </body>
 </html>
+  

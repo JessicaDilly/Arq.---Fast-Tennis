@@ -2559,11 +2559,13 @@ function renderConfig(){
 var _METAS={gerais:[],pessoas:[],alvos:[]};
 function renderPlanMetas(f, g, proj){
   // acesso só admin
-  var soAdmin = USUARIO.papel==="admin";
+  // comitê e admin VEEM esta aba; só admin EDITA metas (botão Definir metas some p/ comitê)
+  var podeVer = USUARIO.papel==="admin" || USUARIO.papel==="comite";
   var cont=document.getElementById("pmConteudo"), acc=document.getElementById("pmAcesso");
-  if(cont) cont.style.display = soAdmin?"block":"none";
-  if(acc) acc.style.display = soAdmin?"none":"block";
-  if(!soAdmin) return;
+  if(cont) cont.style.display = podeVer?"block":"none";
+  if(acc) acc.style.display = podeVer?"none":"block";
+  if(!podeVer) return;
+  var cfgBt=document.getElementById("pmCfg"); if(cfgBt) cfgBt.style.display = (USUARIO.papel==="admin")?"":"none";
   if(!document.getElementById("tblProj")) return;
 
   var c=COL.PROJETOS||{}, ct=COL.TAREFAS||{};
@@ -3814,14 +3816,19 @@ document.getElementById("nvTE").addEventListener("change",()=>{
 /* ---------- navegacao ---------- */
 function aplicarPapel(){
   const papel=USUARIO.papel||"leitor";
-  const TODAS=["equipe","prazos","plan","qual","aprov","tarefas","projetos","relatorio","config"];
-  // decide quais ESCONDER conforme o papel (reversível: mostra/esconde, não remove)
+  // abas: geral, relatorio, projetos, plan(=Prazos), prazos(=Planejamento e Metas),
+  //       equipe, aprov, qual, config(=Usuários)
+  const TODAS=["equipe","prazos","plan","qual","aprov","projetos","relatorio","config"];
   let esconder=[];
-  if(papel==="comite")            esconder=["equipe","prazos","plan","qual","tarefas","projetos","relatorio","config"];
-  else if(papel==="engenharia")   esconder=["equipe","qual","aprov","projetos","relatorio","config"];
-  else if(!USUARIO.interno)       esconder=["equipe","qual","aprov","tarefas","projetos","relatorio","config"];
-  if(papel!=="admin" && esconder.indexOf("config")<0) esconder.push("config");
-  // admin/editor: esconder=[] (veem tudo)
+  if(papel==="admin"){
+    esconder=[];                                              // tudo
+  } else if(papel==="editor" || papel==="engenharia"){
+    esconder=["prazos","config"];                             // menos Planejamento e Metas e Usuários
+  } else if(papel==="comite"){
+    esconder=["projetos","plan","qual","config","equipe"];    // sobra: geral, relatorio, prazos(Planej.Metas), aprov
+  } else {
+    esconder=["relatorio","projetos","plan","prazos","equipe","aprov","qual","config"]; // leitor: só Visão geral
+  }
   TODAS.forEach(function(tab){
     const mostrar = esconder.indexOf(tab)<0;
     const b=document.querySelector('#nav button[data-tab="'+tab+'"]');

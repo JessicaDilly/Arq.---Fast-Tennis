@@ -548,6 +548,11 @@ ul.prev .muted{color:var(--muted);font-size:11px}
     <input type="password" id="lgSenha" autocomplete="current-password" style="width:100%;padding:11px 13px;border:1px solid #dde3e5;border-radius:9px;font-size:14px;font-family:inherit">
     <button id="lgBt" style="width:100%;margin-top:20px;padding:12px;background:#15616D;color:#fff;border:0;border-radius:9px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit">Entrar</button>
     <div id="lgErro" style="color:#C2554F;font-size:13px;margin-top:12px;display:none"></div>
+    <div style="margin-top:16px;text-align:center;font-size:13px">
+      <a href="#" id="lgCriar" style="color:#15616D">Criar conta</a>
+      <span id="lgVoltar" style="display:none"><a href="#" style="color:#15616D">Voltar ao login</a></span>
+    </div>
+    <div id="lgCadOk" style="display:none;color:#3B8C6E;font-size:13px;margin-top:10px"></div>
   </div>
 </div>
 <header>
@@ -565,6 +570,7 @@ ul.prev .muted{color:var(--muted);font-size:11px}
   <button data-tab="equipe">Equipe</button>
   <button data-tab="aprov">Aprovação de Projetos</button>
   <button data-tab="qual">Qualidade</button>
+  <button data-tab="config">⚙ Usuários</button>
 </div>
 <div class="filters">
   <div class="f"><label>Ano</label><select id="fAno"><option value="">Todos</option></select></div>
@@ -793,6 +799,19 @@ ul.prev .muted{color:var(--muted);font-size:11px}
     <button id="pjFechar" title="Fechar">×</button>
     <div id="pjFichaBody"></div>
   </div></div>
+
+  <section class="tab" id="tab-config">
+    <div id="cfgAcesso" style="display:none;padding:40px;text-align:center;color:var(--muted)">Restrito ao administrador.</div>
+    <div id="cfgConteudo">
+      <div class="section-title">Configuração de usuários</div>
+      <div class="grid"><div class="panel col12">
+        <div style="font-size:12px;color:var(--muted);margin:-2px 0 12px">Aprove novos cadastros definindo o papel. Usuários "leitor" recém-cadastrados aguardam sua liberação.</div>
+        <div class="scroll"><table id="tblUsers"><thead><tr>
+          <th>Nome</th><th>E-mail</th><th>Papel</th><th>Ativo</th><th>Ações</th>
+        </tr></thead><tbody></tbody></table></div>
+      </div></div>
+    </div>
+  </section>
 
   <section class="tab" id="tab-qual">
     <div class="section-title">Erros</div>
@@ -1167,12 +1186,19 @@ const SB_ACOES={
   async criarProjeto(dadosJson){
     if(!USUARIO.podeEditar) throw new Error("Sem permissão.");
     const d=JSON.parse(dadosJson);
-    const ins={id:d.id, nome:d.nome||"", padrao:d.padrao||"", fase:d.fase||"NÃO INICIADO",
+    let id=(d.id||"").trim();
+    if(!id){  // gerar o próximo FT.n automaticamente
+      const {data}=await sb.from("projetos").select("id");
+      let maxN=0;
+      (data||[]).forEach(function(r){ const m=String(r.id||"").match(/FT\.(\d+)/i); if(m) maxN=Math.max(maxN,+m[1]); });
+      id="FT."+(maxN+1);
+    }
+    const ins={id:id, nome:d.nome||"", padrao:d.padrao||"", fase:d.fase||"NÃO INICIADO",
       qtd_quadras:+d.quadras||null, estacionamento:d.estac||null,
-      area_lote:d.area?(+String(d.area).replace(",","."))||null:null, inicio_plan:d.iniPlan?br2iso(d.iniPlan):null};
+      area_lote:d.area?((+String(d.area).replace(",","."))||null):null, inicio_plan:d.iniPlan?br2iso(d.iniPlan):null};
     const {error}=await sb.from("projetos").insert(ins);
     if(error) throw new Error(error.message);
-    return JSON.stringify({ok:true, msg:"Projeto "+d.id+" criado"});
+    return JSON.stringify({ok:true, msg:"Projeto "+id+" criado"});
   },
 
   async criarTarefa(dadosJson){
@@ -1233,6 +1259,24 @@ const SB_ACOES={
       if(e2.error) throw new Error(e2.error.message);
     }
     return JSON.stringify({ok:true, msg:"Metas salvas para "+d.ano});
+  },
+
+  /* ---- gestão de usuários (perfis) ---- */
+  async listarUsuarios(){
+    const {data,error}=await sb.from("perfis").select("id,nome,email,papel,ativo").order("nome");
+    if(error) throw new Error(error.message);
+    return JSON.stringify(data||[]);
+  },
+  async atualizarPerfil(dadosJson){
+    if(USUARIO.papel!=="admin") throw new Error("Apenas administrador.");
+    const d=JSON.parse(dadosJson);
+    const upd={};
+    if(d.papel!=null) upd.papel=d.papel;
+    if(d.ativo!=null) upd.ativo=d.ativo;
+    if(d.nome!=null&&d.nome!=="") upd.nome=d.nome;
+    const {error}=await sb.from("perfis").update(upd).eq("id",d.id);
+    if(error) throw new Error(error.message);
+    return JSON.stringify({ok:true, msg:"Perfil atualizado"});
   }
 };
 
@@ -1497,7 +1541,13 @@ function noPeriodo(r,f){
   if(fr&&fr<A) return false;                       // terminou antes
   const ini=pdate(G(r,c.iniReal))||pdate(G(r,c.iniPlan));
   if(ini&&ini>B) return false;                     // começa depois
-  if(!ini&&!fr) return false;                      // sem nenhuma data
+  if(!ini&&!fr){
+    // sem datas: mostra se estiver ATIVO/não iniciado (projeto novo aparece);
+    // esconde só concluídos/cancelados antigos sem data
+    const fase=KEY(G(r,c.fase));
+    if(fase.indexOf("CONCLU")>=0 || fase.indexOf("CANCEL")>=0) return false;
+    return true;
+  }
   return true;
 }
 function classificar(f){
@@ -2443,9 +2493,42 @@ function render(){
 
   renderPlanMetas(f, g, proj);
 
-  renderCalendario(f); renderCapacidade(); renderErros(f); renderPrevisao(proj); renderAlertas(g,f); renderAprovacao(f); renderTarefas(); renderProjetos(); renderRelatorio();
+  renderCalendario(f); renderCapacidade(); renderErros(f); renderPrevisao(proj); renderAlertas(g,f); renderAprovacao(f); renderTarefas(); renderProjetos(); renderRelatorio(); renderConfig();
 }
 
+
+/* ============ CONFIGURAÇÃO DE USUÁRIOS (admin) ============ */
+function renderConfig(){
+  var soAdmin=USUARIO.papel==="admin";
+  var cont=document.getElementById("cfgConteudo"), acc=document.getElementById("cfgAcesso");
+  if(!cont) return;
+  cont.style.display=soAdmin?"block":"none";
+  if(acc) acc.style.display=soAdmin?"none":"block";
+  if(!soAdmin) return;
+  google.script.run.withSuccessHandler(function(t){
+    var us=[]; try{ us=JSON.parse(t); }catch(e){}
+    var PAPEIS=["admin","editor","engenharia","comite","leitor"];
+    document.querySelector("#tblUsers tbody").innerHTML=us.map(function(u){
+      var opts=PAPEIS.map(function(p){return '<option'+(p===u.papel?" selected":"")+'>'+p+'</option>';}).join("");
+      var novo=(u.papel==="leitor")?' <span class="badge s-ni">novo</span>':'';
+      return '<tr><td>'+(u.nome||"")+novo+'</td><td>'+(u.email||"")+'</td>'+
+        '<td><select class="tksel cfgPapel" data-id="'+u.id+'">'+opts+'</select></td>'+
+        '<td><input type="checkbox" class="cfgAtivo" data-id="'+u.id+'"'+(u.ativo!==false?" checked":"")+'></td>'+
+        '<td><button class="pjf-btn cfgSalvar" data-id="'+u.id+'">Salvar</button></td></tr>';
+    }).join("");
+    [].forEach.call(document.querySelectorAll(".cfgSalvar"),function(b){
+      b.onclick=function(){
+        var id=b.getAttribute("data-id");
+        var papel=document.querySelector('.cfgPapel[data-id="'+id+'"]').value;
+        var ativo=document.querySelector('.cfgAtivo[data-id="'+id+'"]').checked;
+        b.disabled=true; b.textContent="…";
+        google.script.run.withSuccessHandler(function(){ b.disabled=false; b.textContent="✓"; setTimeout(function(){b.textContent="Salvar";},1200); })
+          .withFailureHandler(function(e){ b.disabled=false; b.textContent="Salvar"; alert("Erro: "+(e.message||e)); })
+          .atualizarPerfil(JSON.stringify({id:id,papel:papel,ativo:ativo}));
+      };
+    });
+  }).withFailureHandler(function(){}).listarUsuarios();
+}
 
 /* ============ PLANEJAMENTO E METAS (aba admin) ============ */
 var _METAS={gerais:[],pessoas:[],alvos:[]};
@@ -3706,12 +3789,13 @@ document.getElementById("nvTE").addEventListener("change",()=>{
 /* ---------- navegacao ---------- */
 function aplicarPapel(){
   const papel=USUARIO.papel||"leitor";
-  const TODAS=["equipe","prazos","plan","qual","aprov","tarefas","projetos","relatorio"];
+  const TODAS=["equipe","prazos","plan","qual","aprov","tarefas","projetos","relatorio","config"];
   // decide quais ESCONDER conforme o papel (reversível: mostra/esconde, não remove)
   let esconder=[];
-  if(papel==="comite")            esconder=["equipe","prazos","plan","qual","tarefas","projetos","relatorio"];
-  else if(papel==="engenharia")   esconder=["equipe","qual","aprov","projetos","relatorio"];
-  else if(!USUARIO.interno)       esconder=["equipe","qual","aprov","tarefas","projetos","relatorio"];
+  if(papel==="comite")            esconder=["equipe","prazos","plan","qual","tarefas","projetos","relatorio","config"];
+  else if(papel==="engenharia")   esconder=["equipe","qual","aprov","projetos","relatorio","config"];
+  else if(!USUARIO.interno)       esconder=["equipe","qual","aprov","tarefas","projetos","relatorio","config"];
+  if(papel!=="admin" && esconder.indexOf("config")<0) esconder.push("config");
   // admin/editor: esconder=[] (veem tudo)
   TODAS.forEach(function(tab){
     const mostrar = esconder.indexOf(tab)<0;
@@ -3844,6 +3928,29 @@ async function fazerLogin(){
   if(ex) ex.addEventListener("click",exportarPlanMetas);
 })();
 document.getElementById("lgBt").addEventListener("click",fazerLogin);
+(function(){
+  var modoCadastro=false;
+  var link=document.getElementById("lgCriar"), bt=document.getElementById("lgBt");
+  var okMsg=document.getElementById("lgCadOk"), erro=document.getElementById("lgErro");
+  if(link) link.addEventListener("click",function(e){ e.preventDefault();
+    modoCadastro=!modoCadastro;
+    bt.textContent=modoCadastro?"Criar conta":"Entrar";
+    link.textContent=modoCadastro?"Voltar ao login":"Criar conta";
+    okMsg.style.display="none"; erro.style.display="none";
+  });
+  var orig=fazerLogin;
+  window.fazerLogin=async function(){
+    if(!modoCadastro) return orig();
+    var email=document.getElementById("lgEmail").value.trim();
+    var senha=document.getElementById("lgSenha").value;
+    erro.style.display="none"; bt.disabled=true; bt.textContent="Criando…";
+    var r=await sb.auth.signUp({email:email,password:senha,options:{data:{nome:email.split("@")[0],papel:"leitor"}}});
+    bt.disabled=false; bt.textContent="Criar conta";
+    if(r.error){ erro.textContent=r.error.message; erro.style.display="block"; return; }
+    okMsg.textContent="Conta criada! Aguarde um administrador liberar seu acesso.";
+    okMsg.style.display="block";
+  };
+})();
 (function(){ var b=document.getElementById("btSair"); if(b) b.addEventListener("click",async()=>{ await sb.auth.signOut(); location.reload(); }); })();
 document.getElementById("lgSenha").addEventListener("keydown",e=>{if(e.key==="Enter")fazerLogin();});
 /* se já houver sessão salva, entra direto; senão mostra o login */

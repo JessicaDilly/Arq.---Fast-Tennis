@@ -2659,15 +2659,28 @@ function desenharPlanMetas(f, g, proj, ano){
   }).length;
   document.getElementById("pjBase").textContent=andamentoHoje;
 
-  var linhas=[], andamento=andamentoHoje;
-  for(var m2=0;m2<12;m2++){
-    var passado = m2 <= mesCorrente;   // inclui o mês vigente como real/parcial
-    var mm=metaMes(ano,m2+1);
-    var entregas = passado ? entReais[m2] : mm.entregas;   // futuro = meta
-    var entradas = passado ? entrReais[m2] : mm.entradas;  // futuro = meta (10)
-    var inicial=andamento;
-    andamento = inicial - entregas + entradas;
-    linhas.push({mes:m2, inicial:inicial, entregas:entregas, entradas:entradas, saldo:andamento, futuro:!passado});
+  // Ancorado nos projetos em andamento HOJE (fim do mês vigente).
+  // Passado: reconstrói para trás (saldo fim do mês = saldo do mês seguinte - entradas(seg) + entregas(seg)).
+  // Futuro: projeta para frente a partir de hoje com a meta.
+  var linhas=new Array(12);
+  // saldo no FIM do mês vigente = andamentoHoje
+  linhas[mesCorrente]={mes:mesCorrente, entregas:entReais[mesCorrente], entradas:entrReais[mesCorrente],
+                       saldo:andamentoHoje, inicial:andamentoHoje - entrReais[mesCorrente] + entReais[mesCorrente], futuro:false};
+  // meses PASSADOS (para trás)
+  for(var m2=mesCorrente-1; m2>=0; m2--){
+    var saldoSeguinte=linhas[m2+1].inicial;   // início do mês seguinte = fim deste mês
+    var ent=entReais[m2], sai=entrReais[m2];
+    var saldoFim=saldoSeguinte;
+    var inicial=saldoFim - sai + ent;
+    linhas[m2]={mes:m2, entregas:ent, entradas:sai, saldo:saldoFim, inicial:inicial, futuro:false};
+  }
+  // meses FUTUROS (para frente)
+  var andF=andamentoHoje;
+  for(var m3=mesCorrente+1; m3<12; m3++){
+    var mm=metaMes(ano,m3+1);
+    var inicialF=andF;
+    andF = inicialF - mm.entregas + mm.entradas;
+    linhas[m3]={mes:m3, entregas:mm.entregas, entradas:mm.entradas, saldo:andF, inicial:inicialF, futuro:true};
   }
   // tabela TRANSPOSTA: meses nas colunas, métricas nas linhas
   var mesAbrev=["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
@@ -4066,4 +4079,3 @@ sb.auth.getSession().then(async({data})=>{
 </script>
 </body>
 </html>
-  

@@ -636,9 +636,9 @@ ul.prev .muted{color:var(--muted);font-size:11px}
       <div class="section-title">Projeção anual da carteira</div>
       <div class="grid"><div class="panel col12">
         <div style="font-size:12px;color:var(--muted);margin:-2px 0 12px;line-height:1.6">
-          Parte de <b id="pjBase">—</b> projetos em andamento hoje. Cada mês: <b>andamento anterior − entregas + entradas</b>.
-          Meses passados usam os números <b>reais</b>; meses futuros usam a <b>meta</b> (12 entregas, 10 entradas).
-          O saldo de um mês vira o andamento inicial do seguinte.
+          Ancorada nos <b id="pjBase">—</b> projetos em andamento HOJE (fecha o mês vigente com esse número).
+          Meses passados mostram o histórico <b>real</b> reconstruído; meses futuros projetam a partir de hoje
+          com a <b>meta</b> (12 entregas, 10 entradas por mês).
         </div>
         <div class="scroll"><table class="plan projT" id="tblProj"></table></div>
         <div id="projResumo" style="margin-top:10px;font-size:13px"></div>
@@ -1174,6 +1174,7 @@ const SB_ACOES={
     if(d.estac!=null&&d.estac!=="") upd.estacionamento=d.estac;
     if(d.area!=null&&d.area!=="") upd.area_lote=+String(d.area).replace(",",".")||null;
     if(d.iniPlan) upd.inicio_plan=br2iso(d.iniPlan);
+    if(d.fimPlan) upd.fim_plan=br2iso(d.fimPlan);
     if(d.endObra!=null) upd.endereco_obra=d.endObra;
     if(d.piso!=null) upd.piso_quadra=d.piso;
     if(d.tipoEdif!=null) upd.tipo_edificacao=d.tipoEdif;
@@ -2123,6 +2124,8 @@ function pjAbrirFicha(pid){
   if(area) cels.push(["Área do lote", area+" m²"]);
   cels.push(["Início planej.", d(G(row,cp.iniPlan))]);
   cels.push(["Fim planej.", d(G(row,cp.fimPlan))]);
+  cels.push(["Início real", d(G(row,cp.iniReal))]);
+  cels.push(["Fim real", d(G(row,cp.fimReal))]);
   cels.push(["Progresso", pr.pct+"% ("+pr.ok+"/"+pr.tot+")"]);
 
   /* tarefas do projeto */
@@ -3460,17 +3463,22 @@ function abrirLista(balde,g,f){
     if(fr||!fp) return ""; if(fp>=hoje) return "";
     return Math.round((hoje-fp)/86400000); };
   // responsável do projeto = responsável da 1ª tarefa pendente (fase atual); senão o mais frequente
+  // responsável = quem responde pela tarefa da FASE ATUAL (1ª pendente na ordem das etapas)
   const respProj=pid=>{
     const ct=COL.TAREFAS||{};
     const ts=(DADOS.TAREFAS||[]).filter(t=>txt(G(t,ct.idProj))===pid);
     if(!ts.length) return "—";
     const pend=ts.filter(t=>KEY(G(t,ct.status)).indexOf("CONCLU")<0);
-    const alvo=pend.length?pend:ts;
-    // conta responsáveis
-    const cont={};
-    alvo.forEach(t=>respsDe(G(t,ct.resp)).forEach(p=>{cont[p]=(cont[p]||0)+1;}));
-    const top=Object.keys(cont).sort((a,b)=>cont[b]-cont[a])[0];
-    return top?cap(top):"—";
+    if(pend.length){
+      // ordena as pendentes pela ORDEM_ETAPAS e pega a 1ª (fase corrente)
+      pend.sort((a,b)=>(ORDEM_ETAPAS[KEY(G(a,ct.etapa))]||99)-(ORDEM_ETAPAS[KEY(G(b,ct.etapa))]||99));
+      const r=respsDe(G(pend[0],ct.resp));
+      if(r.length) return r.map(cap).join(", ");
+    }
+    // se tudo concluído, pega o responsável da última etapa concluída
+    ts.sort((a,b)=>(ORDEM_ETAPAS[KEY(G(b,ct.etapa))]||0)-(ORDEM_ETAPAS[KEY(G(a,ct.etapa))]||0));
+    const r2=respsDe(G(ts[0],ct.resp));
+    return r2.length?r2.map(cap).join(", "):"—";
   };
   // tempo-alvo por padrão (dias úteis): Standard 15, Plus 25, Premium 40
   const ALVO={STANDARD:15,PLUS:25,PREMIUM:40};

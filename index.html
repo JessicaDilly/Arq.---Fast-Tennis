@@ -1309,6 +1309,32 @@ const SB_ACOES={
     return JSON.stringify({ok:true, msg:"Metas salvas para "+d.ano});
   },
 
+  async concluirProjeto(projId){
+    if(!USUARIO.podeConcluir) throw new Error("Sem permissão.");
+    // conclui todas as tarefas pendentes (hoje) e grava o FIM REAL do projeto
+    const hojeISO=new Date().toISOString().split("T")[0];
+    // 1) tarefas pendentes -> concluídas com fim real hoje (se não tiverem)
+    const {data:ts}=await sb.from("tarefas").select("id,pct,inicio_real,fim_real").eq("projeto_id",projId);
+    for(const t of (ts||[])){
+      if((Number(t.pct)||0)<1){
+        const u={pct:1, fim_real:t.fim_real||hojeISO}; if(!t.inicio_real) u.inicio_real=hojeISO;
+        await sb.from("tarefas").update(u).eq("id",t.id);
+      }
+    }
+    // 2) fim real do projeto = maior fim real entre as tarefas (ou hoje)
+    const {data:ts2}=await sb.from("tarefas").select("fim_real").eq("projeto_id",projId);
+    let maxFim=hojeISO;
+    (ts2||[]).forEach(function(t){ if(t.fim_real && t.fim_real>maxFim) maxFim=t.fim_real; });
+    // início real do projeto = menor início real entre as tarefas (se o projeto não tiver)
+    const {data:ts3}=await sb.from("tarefas").select("inicio_real").eq("projeto_id",projId).not("inicio_real","is",null);
+    let minIni=null; (ts3||[]).forEach(function(t){ if(t.inicio_real && (!minIni||t.inicio_real<minIni)) minIni=t.inicio_real; });
+    const upd={fase:"CONCLUIDO", fim_real:maxFim};
+    if(minIni) upd.inicio_real=minIni;
+    const {error}=await sb.from("projetos").update(upd).eq("id",projId);
+    if(error) throw new Error(error.message);
+    return JSON.stringify({ok:true, msg:projId+" concluído (fim real "+maxFim.split("-").reverse().join("/")+")"});
+  },
+
   async excluirProjeto(projId){
     if(!USUARIO.podeEditar) throw new Error("Sem permissão para excluir.");
     // apaga tarefas e horas do projeto e depois o projeto
@@ -2161,6 +2187,7 @@ function pjAbrirFicha(pid){
              '<select id="pjfFase" class="tksel">'+optsFase+'</select></label>'+
            '<button class="pjf-btn prim" id="pjfEditar">Editar dados do projeto</button>'+
            '<button class="pjf-btn" id="pjfNovaTarefa">Adicionar tarefa</button>'+
+           ((USUARIO.podeConcluir && KEY(p.fase||'').indexOf('CONCLU')<0 && KEY(p.fase||'').indexOf('CANCEL')<0)?'<button class="pjf-btn" id="pjfConcluir" style="border-color:var(--green);color:var(--green)">✓ Concluir projeto</button>':'')+
            '<button class="pjf-btn" id="pjfExcluir" style="border-color:var(--red);color:var(--red)">Excluir projeto</button>';
   }
 
@@ -2194,6 +2221,18 @@ function pjAbrirFicha(pid){
       .withFailureHandler(function(e){ self.disabled=false;
         alert("Não deu certo: "+(e&&e.message?e.message:e)); })
       .mudarFaseProjeto(pid, nova, TOKEN);
+  };
+  var bcon=document.getElementById("pjfConcluir");
+  if(bcon) bcon.onclick=function(){
+    var prog=pjProgresso_(pid);
+    var aviso = prog.tot && prog.ok<prog.tot
+      ? "Este projeto tem "+(prog.tot-prog.ok)+" tarefa(s) pendente(s). Concluir vai marcar TODAS como concluídas e gravar o fim real. Continuar?"
+      : "Concluir o projeto "+pid+" e gravar a data de fim real?";
+    if(!confirm(aviso)) return;
+    bcon.disabled=true; bcon.textContent="…";
+    google.script.run.withSuccessHandler(function(){ pjFecharFicha(); carregar(); })
+      .withFailureHandler(function(e){ bcon.disabled=false; bcon.textContent="✓ Concluir projeto"; alert("Não deu certo: "+(e.message||e)); })
+      .concluirProjeto(pid);
   };
   var bex=document.getElementById("pjfExcluir");
   if(bex) bex.onclick=function(){
@@ -3460,6 +3499,8 @@ function abrirLista(balde,g,f){
   const dt=v=>{const d=pdate(v);return d?fmtd(d)+"/"+d.getFullYear():"—";};
   // dias de atraso do fim planejado (só se vencido e não concluído)
   const diasAtr=r=>{ const fp=pdate(G(r,c.fimPlan)), fr=pdate(G(r,c.fimReal));
+    const faseC=KEY(G(r,c.fase));
+    if(faseC.indexOf("CONCLU")>=0||faseC.indexOf("CANCEL")>=0) return "";  // concluído/cancelado não atrasa
     if(fr||!fp) return ""; if(fp>=hoje) return "";
     return Math.round((hoje-fp)/86400000); };
   // responsável do projeto = responsável da 1ª tarefa pendente (fase atual); senão o mais frequente

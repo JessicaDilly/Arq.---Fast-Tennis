@@ -801,6 +801,22 @@ ul.prev .muted{color:var(--muted);font-size:11px}
     <div id="pjFichaBody"></div>
   </div></div>
 
+  <!-- modal: editar tarefa -->
+  <div id="etOv" style="position:fixed;inset:0;background:rgba(15,30,36,.4);z-index:90;display:none;align-items:center;justify-content:center;padding:20px">
+    <div style="background:#fff;border-radius:16px;width:min(460px,100%);padding:24px;position:relative">
+      <button id="etX" style="position:absolute;top:14px;right:16px;background:none;border:0;font-size:22px;color:var(--muted);cursor:pointer">×</button>
+      <h2 style="margin:0 0 4px;font-size:17px;color:var(--accent)">Editar tarefa</h2>
+      <div id="etTit" style="font-size:13px;color:var(--muted);margin-bottom:16px"></div>
+      <div class="fld"><label>Responsável</label><input type="text" id="etResp" style="width:100%;padding:9px;border:1px solid var(--line2);border-radius:8px"></div>
+      <div class="g2">
+        <div class="fld"><label>Início planejado</label><input type="date" id="etIni" style="width:100%;padding:9px;border:1px solid var(--line2);border-radius:8px"></div>
+        <div class="fld"><label>Fim planejado</label><input type="date" id="etFim" style="width:100%;padding:9px;border:1px solid var(--line2);border-radius:8px"></div>
+      </div>
+      <button class="pjf-btn prim" id="etSalvar" style="margin-top:16px;width:100%">Salvar tarefa</button>
+      <div id="etMsg" style="margin-top:10px;font-size:13px"></div>
+    </div>
+  </div>
+
   <section class="tab" id="tab-config">
     <div id="cfgAcesso" style="display:none;padding:40px;text-align:center;color:var(--muted)">Restrito ao administrador.</div>
     <div id="cfgConteudo">
@@ -1134,7 +1150,20 @@ const SB_ACOES={
     const upd={pct:1, fim_real:iso}; if(!t.inicio_real) upd.inicio_real=iso;
     const {error}=await sb.from("tarefas").update(upd).eq("id",t.id);
     if(error) throw new Error(error.message);
+    // INÍCIO REAL do projeto = data de conclusão do BRIEFING (= entrada do projeto no mês)
+    if(KEY(etapa).indexOf("BRIEFING")>=0){
+      await sb.from("projetos").update({inicio_real:iso}).eq("id",projId);
+    }
     return JSON.stringify({ok:true, msg:projId+" · "+tarefa+" concluída"});
+  },
+
+  async desfazerTarefa(projId,etapa,tarefa){
+    if(!USUARIO.podeConcluir) throw new Error("Sem permissão.");
+    const t=await sbAcharTarefaId(projId,etapa,tarefa);
+    if(!t) throw new Error("Tarefa não encontrada.");
+    const {error}=await sb.from("tarefas").update({pct:0, fim_real:null}).eq("id",t.id);
+    if(error) throw new Error(error.message);
+    return JSON.stringify({ok:true, msg:"Conclusão desfeita"});
   },
 
   async editarTarefa(dadosJson){
@@ -2157,24 +2186,24 @@ function pjAbrirFicha(pid){
   /* tarefas do projeto */
   var tarefas=(DADOS.TAREFAS||[]).filter(function(r){ return txt(G(r,ct.idProj))===pid; })
     .map(function(r){ return {etapa:txt(G(r,ct.etapa)),tarefa:txt(G(r,ct.tarefa)),resp:txt(G(r,ct.resp)),
-      status:txt(G(r,ct.status)),prazo:pdate(G(r,ct.fimPlan))}; })
+      status:txt(G(r,ct.status)),prazo:pdate(G(r,ct.fimPlan)),fimReal:pdate(G(r,ct.fimReal)),iniPlan:pdate(G(r,ct.iniPlan))}; })
     .sort(function(a,b){ var ta=a.prazo?a.prazo.getTime():8.64e15,tb=b.prazo?b.prazo.getTime():8.64e15; return ta-tb; });
 
   var podeAgir=USUARIO.podeConcluir, ehEng=USUARIO.papel==="engenharia";
   var linhasT=tarefas.map(function(t){
     var cls=statusClasse_(t.status), prazo=t.prazo?fmtdA(t.prazo):"—";
+    var fimR=t.fimReal?fmtdA(t.fimReal):"—";
     var acts="";
     var chave=encodeURIComponent(pid)+"|"+encodeURIComponent(t.etapa)+"|"+encodeURIComponent(t.tarefa);
-    if(podeAgir && cls!=="ok"){
-      var minha=!ehEng || respsDe(t.resp).indexOf("ENGENHARIA")>=0;
-      if(minha) acts+='<button class="tkbtn ok" title="Concluir" data-fc="'+chave+'">✓</button>';
+    var minha=!ehEng || respsDe(t.resp).indexOf("ENGENHARIA")>=0;
+    if(podeAgir && minha){
+      if(cls!=="ok") acts+='<button class="tkbtn ok" title="Concluir" data-fc="'+chave+'">✓</button>';
+      else acts+='<button class="tkbtn" title="Desfazer conclusão" data-fd="'+chave+'">↩</button>';
     }
     if(USUARIO.podeEditar)
-      acts+='<button class="tkbtn" title="Editar tarefa" data-fe="'+chave+'"'+
-            ' data-resp="'+encodeURIComponent(t.resp)+'"'+
-            ' data-prazo="'+(t.prazo?fmtdA(t.prazo):"")+'">✎</button>';
+      acts+='<button class="tkbtn" title="Editar tarefa" data-fe="'+chave+'">✎</button>';
     return '<tr><td>'+escAspas(cap(t.etapa))+'</td><td>'+escAspas(t.tarefa)+'</td>'+
-      '<td>'+escAspas(t.resp)+'</td><td>'+prazo+'</td>'+
+      '<td>'+escAspas(t.resp)+'</td><td>'+prazo+'</td><td>'+fimR+'</td>'+
       '<td><span class="tkst '+cls+'">'+escAspas(t.status||"—")+'</span></td>'+
       '<td class="tkacts">'+acts+'</td></tr>';
   }).join("");
@@ -2200,7 +2229,7 @@ function pjAbrirFicha(pid){
       return '<div class="pjf-cel"><div class="k">'+c[0]+'</div><div class="v">'+escAspas(c[1])+'</div></div>'; }).join("")+'</div>'+
     (botoes?'<div class="pjf-acts">'+botoes+'</div>':"")+
     '<div class="pjf-sec">Tarefas do projeto ('+tarefas.length+')</div>'+
-    '<div class="tkwrap"><table class="tktab"><thead><tr><th>Etapa</th><th>Tarefa</th><th>Responsável</th><th>Prazo</th><th>Status</th><th></th></tr></thead>'+
+    '<div class="tkwrap"><table class="tktab"><thead><tr><th>Etapa</th><th>Tarefa</th><th>Responsável</th><th>Fim planej.</th><th>Fim real</th><th>Status</th><th></th></tr></thead>'+
     '<tbody>'+(linhasT||'<tr><td colspan="6" style="padding:14px;color:var(--muted)">Nenhuma tarefa.</td></tr>')+'</tbody></table></div>'+
     pjBlocoObraFranq(row,cp)+
     '<div class="pjf-sec">Feed do projeto</div>'+
@@ -2257,22 +2286,22 @@ function pjAbrirFicha(pid){
         .concluirTarefa(p[0],p[1],p[2],iso2br(hojeISO()),TOKEN); };
   });
 
-  /* editar tarefa: pede novo responsável e novo prazo (prompt simples) */
+  /* desfazer conclusão de tarefa */
+  [].forEach.call(document.querySelectorAll("#pjFichaBody [data-fd]"),function(b){
+    b.onclick=function(){ var p=b.getAttribute("data-fd").split("|").map(decodeURIComponent);
+      if(!confirm("Desfazer a conclusão desta tarefa?")) return;
+      b.disabled=true; b.textContent="…";
+      google.script.run.withSuccessHandler(function(){ carregar(); })
+        .withFailureHandler(function(e){ b.disabled=false; b.textContent="↩"; alert("Não deu certo: "+(e&&e.message?e.message:e)); })
+        .desfazerTarefa(p[0],p[1],p[2]); };
+  });
+
+  /* editar tarefa: abre MODAL com responsável, início e fim planejado */
   [].forEach.call(document.querySelectorAll("#pjFichaBody [data-fe]"),function(b){
     b.onclick=function(){
       var p=b.getAttribute("data-fe").split("|").map(decodeURIComponent);
-      var respAtual=decodeURIComponent(b.getAttribute("data-resp")||"");
-      var prazoAtual=b.getAttribute("data-prazo")||"";
-      var novoResp=prompt("Responsável pela tarefa \""+p[2]+"\":", respAtual);
-      if(novoResp===null) return;
-      var novoPrazo=prompt("Prazo (fim planejado) no formato dd/mm/aaaa:", prazoAtual);
-      if(novoPrazo===null) return;
-      b.disabled=true; b.textContent="…";
-      google.script.run
-        .withSuccessHandler(function(){ carregar(); })
-        .withFailureHandler(function(e){ b.disabled=false; b.textContent="✎";
-          alert("Não deu certo: "+(e&&e.message?e.message:e)); })
-        .editarTarefa(JSON.stringify({projId:p[0],etapa:p[1],tarefa:p[2],resp:novoResp,fimPlan:novoPrazo}),TOKEN);
+      var tObj=tarefas.find(function(x){return x.etapa===p[1] && x.tarefa===p[2];});
+      abrirEditarTarefa(p[0],p[1],p[2],tObj);
     };
   });
 
@@ -2605,6 +2634,37 @@ function render(){
   renderCalendario(f); renderCapacidade(); renderErros(f); renderPrevisao(proj); renderAlertas(g,f); renderAprovacao(f); renderTarefas(); renderProjetos(); renderRelatorio(); renderConfig();
 }
 
+
+/* ---- editar tarefa via modal ---- */
+var _ET={pid:"",etapa:"",tarefa:""};
+function _d2input(d){ return d?d.getFullYear()+"-"+("0"+(d.getMonth()+1)).slice(-2)+"-"+("0"+d.getDate()).slice(-2):""; }
+function abrirEditarTarefa(pid,etapa,tarefa,tObj){
+  _ET={pid:pid,etapa:etapa,tarefa:tarefa};
+  document.getElementById("etTit").textContent=cap(etapa)+" · "+tarefa;
+  document.getElementById("etResp").value=tObj?tObj.resp||"":"";
+  document.getElementById("etIni").value=tObj&&tObj.iniPlan?_d2input(tObj.iniPlan):"";
+  document.getElementById("etFim").value=tObj&&tObj.prazo?_d2input(tObj.prazo):"";
+  document.getElementById("etMsg").textContent="";
+  document.getElementById("etOv").style.display="flex";
+}
+(function(){
+  var ov=document.getElementById("etOv"), x=document.getElementById("etX"), sv=document.getElementById("etSalvar");
+  if(x) x.onclick=function(){ ov.style.display="none"; };
+  if(ov) ov.onclick=function(e){ if(e.target===ov) ov.style.display="none"; };
+  if(sv) sv.onclick=function(){
+    var msg=document.getElementById("etMsg");
+    var d={projId:_ET.pid, etapa:_ET.etapa, tarefa:_ET.tarefa,
+      resp:document.getElementById("etResp").value.trim(),
+      iniPlan:iso2br(document.getElementById("etIni").value),
+      fimPlan:iso2br(document.getElementById("etFim").value)};
+    sv.disabled=true; sv.textContent="Salvando…";
+    google.script.run.withSuccessHandler(function(){
+      sv.disabled=false; sv.textContent="Salvar tarefa";
+      document.getElementById("etOv").style.display="none"; carregar();
+    }).withFailureHandler(function(e){ msg.style.color="var(--red)"; msg.textContent="Erro: "+(e.message||e);
+      sv.disabled=false; sv.textContent="Salvar tarefa"; }).editarTarefa(JSON.stringify(d),TOKEN);
+  };
+})();
 
 /* ============ CONFIGURAÇÃO DE USUÁRIOS (admin) ============ */
 function renderConfig(){

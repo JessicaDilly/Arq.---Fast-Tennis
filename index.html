@@ -817,6 +817,18 @@ ul.prev .muted{color:var(--muted);font-size:11px}
     </div>
   </div>
 
+  <!-- mini-modal: data de conclusão da tarefa -->
+  <div id="ccOv" style="position:fixed;inset:0;background:rgba(15,30,36,.4);z-index:95;display:none;align-items:center;justify-content:center;padding:20px">
+    <div style="background:#fff;border-radius:16px;width:min(360px,100%);padding:24px;position:relative">
+      <button id="ccX" style="position:absolute;top:14px;right:16px;background:none;border:0;font-size:22px;color:var(--muted);cursor:pointer">×</button>
+      <h2 style="margin:0 0 4px;font-size:17px;color:var(--accent)">Concluir tarefa</h2>
+      <div id="ccTit" style="font-size:13px;color:var(--muted);margin-bottom:16px"></div>
+      <div class="fld"><label>Data de conclusão</label><input type="date" id="ccData" style="width:100%;padding:9px;border:1px solid var(--line2);border-radius:8px"></div>
+      <button class="pjf-btn prim" id="ccOk" style="margin-top:16px;width:100%">Concluir</button>
+      <div id="ccMsg" style="margin-top:10px;font-size:13px"></div>
+    </div>
+  </div>
+
   <section class="tab" id="tab-config">
     <div id="cfgAcesso" style="display:none;padding:40px;text-align:center;color:var(--muted)">Restrito ao administrador.</div>
     <div id="cfgConteudo">
@@ -2278,12 +2290,7 @@ function pjAbrirFicha(pid){
   if(bt) bt.onclick=function(){ pjFecharFicha(); pjNovaTarefa(pid); };
   [].forEach.call(document.querySelectorAll("#pjFichaBody [data-fc]"),function(b){
     b.onclick=function(){ var p=b.getAttribute("data-fc").split("|").map(decodeURIComponent);
-      b.disabled=true; b.textContent="…";
-      google.script.run
-        .withSuccessHandler(function(){ carregar(); })
-        .withFailureHandler(function(e){ b.disabled=false; b.textContent="✓";
-          alert("Não deu certo: "+(e&&e.message?e.message:e)); })
-        .concluirTarefa(p[0],p[1],p[2],iso2br(hojeISO()),TOKEN); };
+      abrirConcluirData(p[0],p[1],p[2]); };
   });
 
   /* desfazer conclusão de tarefa */
@@ -2503,13 +2510,8 @@ function renderTarefas(){
 
 /* concluir a tarefa direto da tabela (reusa o servidor concluirTarefa) */
 function tkConcluir(pid,etapa,tarefa,btn){
-  if(!confirm("Concluir a tarefa \""+tarefa+"\" de "+pid+" com a data de hoje?")) return;
-  btn.disabled=true; btn.textContent="…";
-  google.script.run
-    .withSuccessHandler(function(t){ try{JSON.parse(t);}catch(e){} carregar(); })
-    .withFailureHandler(function(e){ btn.disabled=false; btn.textContent="✓ Concluir";
-      alert("Não deu certo: "+(e&&e.message?e.message:e)); })
-    .concluirTarefa(pid,etapa,tarefa,iso2br(hojeISO()),TOKEN);
+  // abre o mini calendário p/ escolher a data de conclusão
+  abrirConcluirData(pid,etapa,tarefa);
 }
 
 /* editar: abre o modal Novo já na aba "Editar projeto", com o projeto da tarefa selecionado */
@@ -2634,6 +2636,33 @@ function render(){
   renderCalendario(f); renderCapacidade(); renderErros(f); renderPrevisao(proj); renderAlertas(g,f); renderAprovacao(f); renderTarefas(); renderProjetos(); renderRelatorio(); renderConfig();
 }
 
+
+/* ---- concluir tarefa com data escolhida (mini calendário) ---- */
+var _CC={pid:"",etapa:"",tarefa:""};
+function abrirConcluirData(pid,etapa,tarefa){
+  _CC={pid:pid,etapa:etapa,tarefa:tarefa};
+  document.getElementById("ccTit").textContent=cap(etapa)+" · "+tarefa;
+  var d=new Date();
+  document.getElementById("ccData").value=d.getFullYear()+"-"+("0"+(d.getMonth()+1)).slice(-2)+"-"+("0"+d.getDate()).slice(-2);
+  document.getElementById("ccMsg").textContent="";
+  document.getElementById("ccOv").style.display="flex";
+}
+(function(){
+  var ov=document.getElementById("ccOv"), x=document.getElementById("ccX"), ok=document.getElementById("ccOk");
+  if(x) x.onclick=function(){ ov.style.display="none"; };
+  if(ov) ov.onclick=function(e){ if(e.target===ov) ov.style.display="none"; };
+  if(ok) ok.onclick=function(){
+    var val=document.getElementById("ccData").value;
+    if(!val){ document.getElementById("ccMsg").textContent="Escolha a data."; return; }
+    var msg=document.getElementById("ccMsg");
+    ok.disabled=true; ok.textContent="Concluindo…";
+    google.script.run.withSuccessHandler(function(){
+      ok.disabled=false; ok.textContent="Concluir"; ov.style.display="none"; carregar();
+    }).withFailureHandler(function(e){ msg.style.color="var(--red)"; msg.textContent="Erro: "+(e.message||e);
+      ok.disabled=false; ok.textContent="Concluir"; })
+      .concluirTarefa(_CC.pid,_CC.etapa,_CC.tarefa,iso2br(val),TOKEN);
+  };
+})();
 
 /* ---- editar tarefa via modal ---- */
 var _ET={pid:"",etapa:"",tarefa:""};

@@ -2216,7 +2216,7 @@ function pjAbrirFicha(pid){
              '<select id="pjfFase" class="tksel">'+optsFase+'</select></label>'+
            '<button class="pjf-btn prim" id="pjfEditar">Editar dados do projeto</button>'+
            '<button class="pjf-btn" id="pjfNovaTarefa">Adicionar tarefa</button>'+
-           ((USUARIO.podeConcluir && KEY(p.fase||'').indexOf('CONCLU')<0 && KEY(p.fase||'').indexOf('CANCEL')<0)?'<button class="pjf-btn" id="pjfConcluir" style="border-color:var(--green);color:var(--green)">✓ Concluir projeto</button>':'')+
+           ((USUARIO.podeConcluir && KEY(fase||'').indexOf('CONCLU')<0 && KEY(fase||'').indexOf('CANCEL')<0)?'<button class="pjf-btn" id="pjfConcluir" style="border-color:var(--green);color:var(--green)">✓ Concluir projeto</button>':'')+
            '<button class="pjf-btn" id="pjfExcluir" style="border-color:var(--red);color:var(--red)">Excluir projeto</button>';
   }
 
@@ -2792,11 +2792,16 @@ function desenharPlanMetas(f, g, proj, ano){
     return '<td class="num">'+(l.futuro?'<span class="badge s-ni">proj.</span>':'<span class="badge s-ok">real</span>')+'</td>'; }).join("")+'</tr>';
   function linha_(rot,campo,bold){ return '<tr><td class="rot">'+rot+'</td>'+linhas.map(function(l){
     var v=l[campo]; return '<td class="num'+(l.futuro?' fut':'')+'">'+(bold?'<b>'+v+'</b>':v)+'</td>'; }).join("")+'</tr>'; }
+  // linha da META de entregas (12/mês ou o que estiver cadastrado)
+  var linMeta='<tr><td class="rot" style="color:var(--muted)">Meta de entregas</td>'+linhas.map(function(l){
+    var mv=metaMes(ano,l.mes+1).entregas;
+    return '<td class="num'+(l.futuro?' fut':'')+'" style="color:var(--muted)">'+mv+'</td>'; }).join("")+'</tr>';
   document.getElementById("tblProj").innerHTML=
     '<thead><tr>'+thMes+'</tr></thead><tbody>'+
     linha_("Em andamento (início)","inicial",false)+
-    linha_("Entregas","entregas",false)+
     linha_("Entradas","entradas",false)+
+    linha_("Entregas","entregas",false)+
+    linMeta+
     linha_("Saldo (fim)","saldo",true)+
     linTipo+
     '</tbody>';

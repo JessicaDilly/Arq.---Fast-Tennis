@@ -897,7 +897,7 @@ ul.prev .muted{color:var(--muted);font-size:11px}
       <button type="button" data-sim="est">Estudo orçamentário</button>
     </div>
     <div id="simMsg" class="banner"></div>
-    <div id="simCarreg" class="tkvazio" style="display:none">Carregando o banco de orçamentos…</div>
+    <div id="simCarreg" class="tkvazio" style="display:none">Carregando a base orçamentária…</div>
 
     <!-- simulação de investimento (onboarding) -->
     <div id="simInv">
@@ -906,16 +906,20 @@ ul.prev .muted{color:var(--muted);font-size:11px}
           <h3>Perguntas do onboarding</h3>
           <div style="font-size:12px;color:var(--muted);margin:-8px 0 14px">Preenchidas com o franqueado na reunião</div>
           <div class="fld"><label>Unidade</label><input type="text" id="simUnid" placeholder="ex.: FT.158 · Maringá/PR"></div>
-          <div class="fld"><label>Valor disponível para investir (R$)</label><input type="number" id="simDisp" min="0" step="50000" value="2400000"></div>
-          <div class="fld"><label>Quantidade de quadras</label>
-            <input type="number" id="simQuad" min="1" step="1" value="1"></div>
+          <div class="fld"><label>Valor disponível para investir (R$)</label><input type="number" id="simDisp" min="0" step="50000" value="1500000"></div>
+          <div class="row2">
+            <div class="fld"><label>Quantidade de quadras</label><input type="number" id="simQuad" min="1" step="1" value="1"></div>
+            <div class="fld"><label>Piso da quadra</label><select id="simPiso"><option value="saibro">Saibro</option><option value="rapido">Piso rápido</option></select></div>
+          </div>
           <div class="fld"><label>Tem quadra infantil? <small style="font-weight:400;color:var(--muted)">— sempre coberta</small></label>
             <div class="segbtns" id="simInf"><button type="button" data-v="nao" class="on">Não</button><button type="button" data-v="sim">Sim</button></div></div>
-          <div class="fld"><label>Piso da quadra</label><select id="simPiso"><option value="">Qualquer piso</option></select></div>
           <div class="fld"><label>Padrão da edificação</label>
             <div class="segbtns" id="simPad"><button type="button" data-v="Standard">Standard</button><button type="button" data-v="Plus" class="on">Plus</button><button type="button" data-v="Premium">Premium</button></div></div>
-          <div class="fld"><label>UF da obra</label><select id="simUF"></select></div>
-          <div class="fld"><label>Tamanho do lote (m²)</label><input type="number" id="simLote" min="0" step="100" value="4500"></div>
+          <div class="fld" id="simAreaFld" style="display:none"><label>Área da edificação Premium (m²)</label><input type="number" id="simArea" min="0" step="1" placeholder="padrão da base"></div>
+          <div class="row2">
+            <div class="fld"><label>UF da obra</label><select id="simUF"></select></div>
+            <div class="fld"><label>Tamanho do lote (m²)</label><input type="number" id="simLote" min="0" step="100" value="3000"></div>
+          </div>
           <div class="fld"><label>Terreno com desnível acentuado?</label>
             <div class="segbtns" id="simDesn"><button type="button" data-v="nao" class="on">Não</button><button type="button" data-v="sim">Sim</button></div></div>
         </div>
@@ -926,7 +930,7 @@ ul.prev .muted{color:var(--muted);font-size:11px}
             <div class="legenda"><span><i style="background:var(--accent2)"></i>Faixa estimada</span><span><i style="background:var(--ink);width:3px"></i>Estimativa central</span><span><i style="background:var(--green);width:3px"></i>Valor disponível</span></div>
           </div>
           <div class="panel"><h3>Para onde vai o investimento</h3>
-            <div class="tkwrap"><table class="tktab"><thead><tr><th>Etapa</th><th>Participação</th><th>Estimativa</th><th>% do total</th></tr></thead><tbody id="simComp"></tbody></table></div>
+            <div class="tkwrap"><table class="tktab"><thead><tr><th>Etapa</th><th>Base</th><th>Custo direto</th><th>BDI</th><th>Valor final</th><th>%</th></tr></thead><tbody id="simComp"></tbody></table></div>
           </div>
           <div class="panel"><h3>O que ajustar para caber</h3>
             <div style="font-size:12px;color:var(--muted);margin:-8px 0 8px">Cada opção mostra o novo total central e a diferença para o cenário atual</div>
@@ -937,32 +941,32 @@ ul.prev .muted{color:var(--muted);font-size:11px}
       </div>
     </div>
 
-    <!-- estudo orçamentário (após o anteprojeto) -->
+    <!-- estudo orçamentário (após o anteprojeto), nos moldes das Análises Orçamentárias -->
     <div id="simEst" style="display:none">
       <div class="panel" style="margin-bottom:16px">
         <h3>Dados da obra</h3>
-        <div class="tkbar" style="margin-bottom:0">
+        <div class="tkbar" style="margin-bottom:8px">
           <select id="estProj" class="tksel" title="Projeto"><option value="">Projeto (opcional)</option></select>
-          <select id="estPad" class="tksel" title="Padrão"><option>Standard</option><option selected>Plus</option><option>Premium</option></select>
-          <input id="estQuad" class="tkin" type="number" min="1" step="1" value="1" title="Quantidade de quadras" placeholder="Quadras" style="flex:0 1 110px;min-width:90px">
-          <select id="estPiso" class="tksel" title="Piso"><option value="">Qualquer piso</option></select>
+          <input id="estUnid" class="tkin" type="text" placeholder="Unidade (ex.: Fast Tennis Rondonópolis)" style="flex:1 1 220px">
           <select id="estUF" class="tksel" title="UF da obra"></select>
-          <input id="estArea" class="tkin" type="number" min="0" placeholder="Área construída (m²)" style="flex:0 1 190px;min-width:160px">
-          <input id="estDisp" class="tkin" type="number" min="0" step="50000" placeholder="Disponível (R$)" style="flex:0 1 170px;min-width:150px">
+          <select id="estPad" class="tksel" title="Padrão"><option>Standard</option><option selected>Plus</option><option>Premium</option></select>
+        </div>
+        <div class="tkbar" style="margin-bottom:0">
+          <input id="estQuad" class="tkin" type="number" min="1" step="1" value="1" title="Quantidade de quadras" placeholder="Quadras" style="flex:0 1 110px;min-width:90px">
+          <select id="estPiso" class="tksel" title="Piso"><option value="saibro">Saibro</option><option value="rapido">Piso rápido</option></select>
+          <select id="estInf" class="tksel" title="Quadra infantil"><option value="nao">Sem quadra infantil</option><option value="sim">Com quadra infantil coberta</option></select>
+          <input id="estLote" class="tkin" type="number" min="0" placeholder="Lote (m²)" style="flex:0 1 130px;min-width:110px">
+          <input id="estArea" class="tkin" type="number" min="0" placeholder="Edificação (m²)" style="flex:0 1 150px;min-width:120px">
+          <input id="estDisp" class="tkin" type="number" min="0" step="50000" placeholder="Disponível (R$)" style="flex:0 1 160px;min-width:140px">
         </div>
       </div>
-      <div class="cards" id="estCards"></div>
-      <div class="grid" style="margin-top:16px">
-        <div class="panel col12"><h3>Estudo por etapa da obra <small style="font-weight:400;color:var(--muted)">valores corrigidos para hoje (INCC) e para a UF da obra</small></h3>
-          <div class="tkwrap"><table class="tktab"><thead><tr><th>Etapa</th><th>1º quartil</th><th>Mediana</th><th>3º quartil</th><th>% do total</th></tr></thead><tbody id="estEtapas"></tbody></table></div>
-        </div>
-        <div class="panel col12"><h3>Fornecedores disponíveis para esta obra</h3>
-          <div style="font-size:12px;color:var(--muted);margin:-8px 0 12px" id="estFiltroTxt"></div>
-          <div class="tkwrap"><table class="tktab"><thead><tr><th>#</th><th>Fornecedor</th><th>Nota</th><th>Vagas livres na região</th><th>R$/quadra · R$/m² civil</th><th>Estimativa da obra</th><th>× estudo</th><th>× disponível</th></tr></thead><tbody id="estForn"></tbody></table></div>
-          <div id="estFora" style="margin-top:12px"></div>
-          <div class="hint">Estimativa = R$/m² civil do fornecedor na região × área construída + R$ por quadra × nº de quadras. Quando só um dos dois preços existe, a estimativa aparece como parcial e não é comparada ao estudo. Serve para pré-selecionar quem convidar para orçar; o valor final vem do orçamento de cada um.</div>
-        </div>
+      <div class="pjbar no-print">
+        <button type="button" class="pjf-btn prim" id="estPDF">⎙ Gerar PDF — Análise Orçamentária</button>
+        <button type="button" class="pjf-btn" id="estXLSX">⬇ Planilha Simulador Orçamentário (Excel)</button>
       </div>
+      <div class="panel" style="margin-bottom:16px"><h3>Conclusão e recomendação técnica <small style="font-weight:400;color:var(--muted)">— texto editável, entra no documento</small></h3>
+        <div class="fld" style="margin:0"><textarea id="estConc" style="min-height:90px"></textarea></div></div>
+      <div id="estDoc" class="rlfolha"></div>
     </div>
   </section>
 
@@ -4482,7 +4486,7 @@ var ENG_DATA_BASE_BANCO="2024-11";   // data-base do banco quando o orçamento n
 var ENG_FONTES=["eng_orcamentos","v_eng_orcamento_etapas","eng_eap_etapas","eng_fornecedores","eng_fornecedor_regioes",
   "v_eng_fornecedor_ocupacao","eng_obras","eng_obra_fornecedor","eng_marcos","v_eng_orcamentos_corrigidos","eng_obra_marcos"];
 var ENG_FONTES_006=["eng_ocorrencias","eng_ocorrencia_fotos","eng_pendencias","eng_orcamentos_recebidos",
-  "eng_fornecedor_comentarios","v_eng_fornecedor_nota"];
+  "eng_fornecedor_comentarios","v_eng_fornecedor_nota","eng_base_etapas","eng_base_itens","eng_sim_parametros"];
 
 /* ---------- utilitários ---------- */
 function engEsc(v){ return String(v==null?"":v).split("&").join("&amp;").split("<").join("&lt;").split(">").join("&gt;").split('"').join("&quot;"); }
@@ -4547,12 +4551,14 @@ async function engCarregar(){
       fornReg:d.eng_fornecedor_regioes, ocup:d.v_eng_fornecedor_ocupacao, obras:d.eng_obras, obraForn:d.eng_obra_fornecedor,
       marcos:d.eng_marcos, obraMarcos:d.eng_obra_marcos, corr:{},
       oc:d.eng_ocorrencias, ocFotos:d.eng_ocorrencia_fotos, pend:d.eng_pendencias, rec:d.eng_orcamentos_recebidos,
-      coment:d.eng_fornecedor_comentarios, notas:{}};
+      coment:d.eng_fornecedor_comentarios, notas:{},
+      baseEt:d.eng_base_etapas, baseIt:d.eng_base_itens, param:{}};
+    d.eng_sim_parametros.forEach(function(x){ ENG.d.param[x.chave]=x; });
     d.v_eng_orcamentos_corrigidos.forEach(function(x){ ENG.d.corr[x.id]=x; });
     d.v_eng_fornecedor_nota.forEach(function(x){ ENG.d.notas[x.fornecedor_id]=x; });
     ENG.itens={}; ENG.carregado=true;
     if(ENG.faltando.length){
-      var av="Algumas partes ainda não têm tabela no Supabase (<b>"+ENG.faltando.join(", ")+"</b>). Rode o <b>006_engenharia_simulador.sql</b>; até lá elas aparecem vazias.";
+      var av="Algumas partes ainda não têm tabela no Supabase (<b>"+ENG.faltando.join(", ")+"</b>). Rode os SQL pendentes (<b>006</b> e <b>008</b>) no Supabase; até lá elas aparecem vazias.";
       ["engMsg","simMsg"].forEach(function(id){ var m=document.getElementById(id); m.className="banner show"; m.innerHTML=av; });
     }
     engMontarFiltros(); simMontarFiltros();
@@ -5119,20 +5125,25 @@ function engAbrirForn(id){
 }
 
 /* ================================================================
-   SIMULADOR
-   Estimativa pelo banco real: mediana dos orçamentos comparáveis (mesmo padrão e nº de quadras),
-   cada um corrigido por corrigirValor (INCC até hoje + diferença regional SINAPI). Faixa = 1º a 3º quartil.
+   SIMULADOR E ESTUDO ORÇAMENTÁRIO
+   Base de cálculo: orçamento-modelo da engenharia Fast Tennis (Drive › BASE ORÇAMENTO ›
+   MODELO - FAST TENNIS - ORÇAMENTOS, aba CONTAINER - 20PÉS), carregado no Supabase pelo 008
+   (eng_base_etapas, eng_base_itens, eng_sim_parametros).
+   - cada etapa do modelo escala pelo seu "driver": fixo · por quadra · pela área do lote;
+   - edificação troca pelo padrão: Standard = container 20 pés, Plus = container 40 pés, Premium = área × R$/m²;
+   - preços do modelo corrigidos por corrigirValor (INCC da data-base até hoje + fator regional UF base → UF da obra);
+   - balizamento por fornecedores: onde houver preço dos fornecedores da região (R$ por quadra, R$/m² civil),
+     ele substitui a base e dá a faixa mínima–máxima, sem BDI (preço já praticado pelo fornecedor);
+   - BDI (parâmetro, 25%) sobre o restante do custo direto.
    ================================================================ */
 var SIM={aba:"inv", pad:"Plus", desn:"nao", inf:"nao"};
-/* adicionais do simulador fora do banco (valores internos da engenharia, não de mercado) */
-var SIM_ADICIONAIS={quadraInfantil:{nome:"Quadra infantil coberta", min:60000, central:80000, max:100000}};
 function simAbrir(){ if(!engPodeVer()) return; engGarantir(simRender); }
+function simP(ch){ var p=ENG.d.param[ch]; return p?(p.valor!=null?Number(p.valor):p.texto):null; }
+function simBaseOk(){ return ENG.d.baseEt.length>0 && simP("bdi")!=null; }
 function simMontarFiltros(){
   var ufs=Object.keys(REF_MERCADO.ufRegiao).sort();
   ["simUF","estUF"].forEach(function(id){ var s=document.getElementById(id); if(s.options.length) return;
     s.innerHTML=ufs.map(function(u){ return '<option value="'+u+'">'+u+' · '+REF_MERCADO.ufRegiao[u]+'</option>'; }).join(""); s.value="SP"; });
-  var pisos=uniq(ENG.d.orc.map(function(o){ return txt(o.piso); })).sort();
-  engOpcoes("simPiso",pisos); engOpcoes("estPiso",pisos);
   var cp=COL.PROJETOS||{};
   var projs=(DADOS.PROJETOS||[]).map(function(r){ return {id:txt(G(r,cp.id)),nome:txt(G(r,cp.nome))}; }).filter(function(x){ return x.id; })
     .sort(function(a,b){ return b.id.localeCompare(a.id,"pt",{numeric:true}); });
@@ -5143,70 +5154,97 @@ function simRender(){
   [].forEach.call(document.querySelectorAll("#simAbas button"),function(b){ b.classList.toggle("on",b.dataset.sim===SIM.aba); });
   document.getElementById("simInv").style.display=SIM.aba==="inv"?"":"none";
   document.getElementById("simEst").style.display=SIM.aba==="est"?"":"none";
+  if(!simBaseOk()){
+    var m=document.getElementById("simMsg"); m.className="banner show err";
+    m.innerHTML="A base orçamentária ainda não está no Supabase. Rode o <b>008_base_orcamentaria.sql</b> e clique em ↻ Atualizar.";
+    return;
+  }
   if(SIM.aba==="inv") simCalc(); else estCalc();
 }
-/* orçamentos comparáveis e seus valores corrigidos para hoje e para a UF da obra */
-function simComparaveis(p){
-  var notas=[];
-  var base=ENG.d.orc.filter(function(o){ return KEY(o.padrao)===KEY(p.pad) && (Number(o.total_com_bdi)||Number(o.total_sem_bdi)); });
-  var exatos=base.filter(function(o){ return +o.qtd_quadras===+p.quad; }), usados=exatos, escala=false;
-  if(exatos.length<3){
-    usados=base.filter(function(o){ return +o.qtd_quadras>0; }); escala=true;
-    if(usados.length) notas.push("menos de 3 orçamentos "+p.pad+" com "+p.quad+" quadras: valores proporcionais ao nº de quadras");
+
+/* preços de fornecedores da região: lista de {fornecedor, valor} para "quadra" ou "m2" */
+function simPrecosForn(reg,campo){
+  return ENG.d.forn.map(function(f){ return {f:f, v:engPrecoReg(f.id,reg)[campo]}; }).filter(function(x){ return x.v; });
+}
+
+/* ---- motor de cálculo (usado pelo simulador, pelos ajustes e pelo estudo) ---- */
+function simCalcular(p){
+  var reg=engRegiaoDaUF(p.uf), bdi=simP("bdi");
+  var base={dataBase:simP("base_data"), ufBase:simP("base_uf")};
+  var fCorr=corrigirValor(1,{dataBase:base.dataBase, ufBase:base.ufBase, ufObra:p.uf});
+  var fIncc=fatorINCC(base.dataBase);
+  var nQ=Math.max(1,p.quad), qBase=simP("base_quadras")||1, loteBase=simP("base_lote_m2")||1, lote=p.lote>0?p.lote:loteBase;
+  var etapas=[], notas=[];
+  ENG.d.baseEt.slice().sort(function(a,b){ return a.ordem-b.ordem; }).forEach(function(e){
+    var r={ordem:e.ordem, nome:txt(e.etapa), driver:e.driver, comBdi:true, fonte:"base", ref:"", escala:1};
+    var tb=Number(e.total_base)||0;
+    if(e.driver==="fixo"){ r.min=r.max=tb*fCorr; r.ref="Base do modelo × correção "+engNum(fCorr,3); }
+    else if(e.driver==="quadra"){ r.escala=nQ/qBase; r.min=r.max=tb*r.escala*fCorr; r.ref="Base do modelo por quadra × "+nQ+" quadra(s) × correção "+engNum(fCorr,3); }
+    else if(e.driver==="lote"){ r.escala=lote/loteBase; r.min=r.max=tb*r.escala*fCorr; r.ref="Base do modelo proporcional ao lote ("+engNum(lote,0)+" m² / "+engNum(loteBase,0)+" m²) × correção "+engNum(fCorr,3); }
+    else if(e.driver==="edificacao"){
+      if(p.pad==="Premium"){
+        var area=p.area>0?p.area:simP("edif_premium_area");
+        var pf=simPrecosForn(reg,"m2");
+        r.nome="EDIFICAÇÃO EM ALVENARIA / STEEL FRAME ("+engNum(area,0)+" m²)";
+        if(pf.length){ var vs=pf.map(function(x){ return x.v; });
+          r.min=area*Math.min.apply(null,vs); r.max=area*Math.max.apply(null,vs); r.comBdi=false; r.fonte="fornecedor";
+          r.ref="R$/m² civil dos fornecedores do "+reg+" ("+pf.map(function(x){ return txt(x.f.empresa)+": "+engNum(x.v,0); }).join("; ")+")"; }
+        else { r.min=area*simP("edif_premium_m2_min"); r.max=area*simP("edif_premium_m2_max"); r.fonte="parametro";
+          r.ref="R$ "+engNum(simP("edif_premium_m2_min"),0)+" a "+engNum(simP("edif_premium_m2_max"),0)+"/m² (parâmetro da base; sem preço de fornecedor no "+reg+")"; }
+        r.area=area;
+      } else {
+        var v=p.pad==="Standard"?simP("edif_standard"):simP("edif_plus");
+        r.nome=p.pad==="Standard"?"EDIFICAÇÃO — CONTAINER 20 PÉS":"EDIFICAÇÃO — CONTAINER 40 PÉS";
+        r.min=r.max=v*fIncc; r.ref="Valor do modelo × INCC "+engNum(fIncc,3);
+      }
+    }
+    else if(e.driver==="quadra_servico"){
+      var pq=simPrecosForn(reg,"quadra");
+      r.nome="QUADRAS — "+(p.piso==="rapido"?"PISO RÁPIDO":"SAIBRO")+" DESCOBERTAS ("+nQ+" un.)";
+      if(pq.length){ var vq=pq.map(function(x){ return x.v; });
+        r.min=nQ*Math.min.apply(null,vq); r.max=nQ*Math.max.apply(null,vq); r.comBdi=false; r.fonte="fornecedor";
+        r.ref="Preço por quadra dos fornecedores do "+reg+" ("+pq.map(function(x){ return txt(x.f.empresa)+": "+engMoeda(x.v); }).join("; ")+"), sem BDI";
+        if(p.piso==="rapido") notas.push("preço de quadra dos fornecedores não distingue o piso");
+      } else {
+        var unit=p.piso==="rapido"?simP("quadra_rapida_base"):tb;
+        r.min=r.max=unit*nQ*fCorr; r.ref="Base do modelo ("+(p.piso==="rapido"?"aba RÁPIDO":"quadra de saibro")+") × "+nQ+" quadra(s) × correção "+engNum(fCorr,3)+" — sem preço de fornecedor no "+reg;
+      }
+    }
+    r.bdiMin=r.comBdi?r.min*bdi:0; r.bdiMax=r.comBdi?r.max*bdi:0;
+    r.finMin=r.min+r.bdiMin; r.finMax=r.max+r.bdiMax;
+    etapas.push(r);
+  });
+  if(p.inf){
+    var im=simP("quadra_infantil_min"), iM=simP("quadra_infantil_max");
+    etapas.push({ordem:90, nome:"QUADRA INFANTIL COBERTA", driver:"fixo", comBdi:false, fonte:"parametro", min:im, max:iM, bdiMin:0, bdiMax:0, finMin:im, finMax:iM,
+      ref:"Acréscimo de "+engMoeda(im)+" a "+engMoeda(iM)+" (quadra infantil sempre coberta)"});
   }
-  if(p.piso){ var cp=usados.filter(function(o){ return KEY(o.piso)===KEY(p.piso); });
-    if(cp.length>=3) usados=cp; else notas.push("piso não filtrado (menos de 3 orçamentos com "+p.piso+")"); }
-  var itens=usados.map(function(o){
-    var f=escala? p.quad/(+o.qtd_quadras) : 1;
-    return {o:o, f:f, v:engValorHoje(o, Number(o.total_com_bdi)||Number(o.total_sem_bdi), p.uf)*f};
-  });
-  var vs=itens.map(function(x){ return x.v; });
-  var r={itens:itens, notas:notas, n:itens.length, escala:escala};
-  if(vs.length){ r.central=engQuartil(vs,.5); r.lo=vs.length>=4?engQuartil(vs,.25):Math.min.apply(null,vs); r.hi=vs.length>=4?engQuartil(vs,.75):Math.max.apply(null,vs); }
-  return r;
-}
-/* participação mediana de cada etapa nos comparáveis (com BDI) */
-function simComposicao(C){
-  var etapas=ENG.d.eap.length?ENG.d.eap.map(function(e){ return {cod:txt(e.codigo),nome:txt(e.nome)}; }):[];
-  var shares={};
-  C.itens.forEach(function(it){
-    var E=engEtapasDoOrc(it.o), tot=E.linhas.reduce(function(s,x){ return s+(Number(x.total_com_bdi)||Number(x.total_sem_bdi)||0); },0);
-    if(!tot) return;
-    if(!etapas.length) etapas=E.etapas;
-    E.linhas.forEach(function(x){ var k=KEY(x.etapa_codigo); (shares[k]=shares[k]||[]).push((Number(x.total_com_bdi)||Number(x.total_sem_bdi)||0)/tot); });
-  });
-  var L=etapas.map(function(e){ return {nome:e.nome||e.cod, s:shares[KEY(e.cod)]?engQuartil(shares[KEY(e.cod)],.5):0}; }).filter(function(x){ return x.s>0; });
-  var soma=L.reduce(function(s,x){ return s+x.s; },0);
-  L.forEach(function(x){ x.s=soma?x.s/soma:0; });
-  return L;
-}
-function simParams(){
-  return {disp:+document.getElementById("simDisp").value||0, quad:Math.max(1,Math.round(+document.getElementById("simQuad").value||1)), pad:SIM.pad,
-    piso:document.getElementById("simPiso").value, uf:document.getElementById("simUF").value, inf:SIM.inf==="sim"};
-}
-/* estimativa = comparáveis do banco + adicionais (quadra infantil coberta) */
-function simEstimar(p){
-  var C=simComparaveis(p), ad=[];
-  if(p.inf) ad.push(SIM_ADICIONAIS.quadraInfantil);
-  var R={C:C, n:C.n, notas:C.notas, adic:ad, itens:C.itens};
-  if(C.n){ var s=function(k){ return ad.reduce(function(t,a){ return t+a[k]; },0); };
-    R.lo=C.lo+s("min"); R.central=C.central+s("central"); R.hi=C.hi+s("max"); }
+  if(p.desn) notas.push("desnível acentuado informado: acréscimo por declive ainda em definição, não incluído");
+  var soma=function(k){ return etapas.reduce(function(s,x){ return s+x[k]; },0); };
+  var R={p:p, reg:reg, bdi:bdi, fCorr:fCorr, fIncc:fIncc, base:base, etapas:etapas, notas:notas,
+    diretoMin:soma("min"), diretoMax:soma("max"), lo:soma("finMin"), hi:soma("finMax")};
+  R.central=(R.lo+R.hi)/2;
   return R;
 }
+function simParams(){
+  return {disp:+document.getElementById("simDisp").value||0, quad:Math.max(1,Math.round(+document.getElementById("simQuad").value||1)),
+    pad:SIM.pad, piso:document.getElementById("simPiso").value, uf:document.getElementById("simUF").value,
+    lote:+document.getElementById("simLote").value||0, area:+document.getElementById("simArea").value||0,
+    inf:SIM.inf==="sim", desn:SIM.desn==="sim"};
+}
 function simCalc(){
-  var p=simParams(), C=simEstimar(p), v=document.getElementById("simVeredito");
+  var p=simParams(); document.getElementById("simAreaFld").style.display=p.pad==="Premium"?"":"none";
+  var R=simCalcular(p), v=document.getElementById("simVeredito");
   var setV=function(cls,ico,html){ v.className="alert "+cls; v.innerHTML='<span class="ico">'+ico+'</span><span>'+html+'</span>'; };
-  document.getElementById("simBase").innerHTML="Base: <b>"+C.n+"</b> orçamento(s) do banco · padrão "+engEsc(p.pad)+
-    " · valores com BDI corrigidos para hoje (INCC) e para "+engEsc(p.uf)+" (SINAPI)"+(C.notas.length?" · "+engEsc(C.notas.join(" · ")):"")+
-    (p.inf?" · quadra infantil coberta: +"+engMoeda(SIM_ADICIONAIS.quadraInfantil.min)+" a "+engMoeda(SIM_ADICIONAIS.quadraInfantil.max):"")+
-    ". Lote e desnível ainda não entram no cálculo. Simulação de ordem de grandeza; não substitui o estudo orçamentário. "+engEsc(engRefTxt());
-  if(!C.n){
-    setV("a-inf","i","<b>Sem base para simular.</b> O banco não tem orçamentos do padrão "+engEsc(p.pad)+".");
-    ["simGauge","simComp","simSugs"].forEach(function(id){ document.getElementById(id).innerHTML=""; });
-    document.getElementById("simFaixaTxt").textContent=""; return;
-  }
-  var min=C.lo, max=C.hi, c=C.central;
-  document.getElementById("simFaixaTxt").textContent=C.n>=4?"· faixa do 1º ao 3º quartil":"· faixa do menor ao maior valor (menos de 4 orçamentos)";
+  var min=R.lo, max=R.hi, c=R.central;
+  var B=simComparaveis(p);
+  document.getElementById("simBase").innerHTML="Base: orçamento-modelo da engenharia Fast Tennis (custo direto do modelo "+engMoeda(ENG.d.baseEt.reduce(function(s,e){ return s+(Number(e.total_base)||0); },0))+
+    ", 1 quadra, container 20 pés), preços de "+engMesTxt(R.base.dataBase)+" em "+engEsc(R.base.ufBase)+" corrigidos para hoje e para "+engEsc(p.uf)+" (fator "+engNum(R.fCorr,3)+")"+
+    " · BDI de "+engNum(R.bdi*100,0)+"% sobre o custo direto, exceto itens com preço de fornecedor"+
+    (R.notas.length?" · "+engEsc(R.notas.join(" · ")):"")+
+    (B.n?" · comparação: banco de orçamentos, mediana "+engMi(B.central)+" ("+B.n+" orçamento(s) "+engEsc(p.pad)+")":"")+
+    ". Simulação de ordem de grandeza; não substitui o estudo orçamentário. "+engEsc(engRefTxt());
+  document.getElementById("simFaixaTxt").textContent=max>min?"· faixa pelos preços mínimo e máximo dos fornecedores da região":"";
   if(max<=p.disp) setV("a-ok","✓","<b>Cabe no investimento.</b> Mesmo no topo da faixa ("+engMi(max)+"), o valor disponível cobre a obra com folga de "+engMi(p.disp-max)+".");
   else if(min<=p.disp) setV("a-amb","•","<b>Cabe com ajustes.</b> O disponível ("+engMi(p.disp)+") fica dentro da faixa estimada. Vale avaliar os ajustes abaixo para ganhar margem.");
   else setV("a-red","!","<b>Não cabe hoje.</b> Faltam pelo menos "+engMi(min-p.disp)+" para o piso da faixa. Veja abaixo quais ajustes aproximam o projeto do disponível.");
@@ -5221,96 +5259,154 @@ function simCalc(){
     tag(p.disp,-6,"var(--green)",700,"Disponível "+engMi(p.disp))+tag(c,50,"var(--ink)",700,engMi(c))+
     (X(c)-X(min)>12?tag(min,50,"var(--muted)",500,engMi(min)):"")+(X(max)-X(c)>12?tag(max,50,"var(--muted)",500,engMi(max)):"");
   /* composição */
-  var comp=simComposicao(C.C), cBanco=C.C.central;
-  document.getElementById("simComp").innerHTML=comp.length?comp.map(function(x){
-    return '<tr><td>'+engEsc(x.nome)+'</td><td style="min-width:120px"><div class="prog" style="margin:0"><div class="bar"><div class="fill" style="width:'+Math.round(x.s*100/Math.max.apply(null,comp.map(function(y){ return y.s; })))+'%;background:var(--accent2)"></div></div></div></td>'+
-      '<td class="num">'+engMoeda(cBanco*x.s)+'</td><td class="num">'+engPct(cBanco*x.s/c)+'</td></tr>'; }).join("")+
-    C.adic.map(function(a){ return '<tr><td>'+engEsc(a.nome)+' <span style="color:var(--muted)">(adicional: '+engMoeda(a.min)+' a '+engMoeda(a.max)+')</span></td><td></td>'+
-      '<td class="num">'+engMoeda(a.central)+'</td><td class="num">'+engPct(a.central/c)+'</td></tr>'; }).join("")+
-    '<tr><td><b>Total estimado</b></td><td></td><td class="num"><b>'+engMoeda(c)+'</b></td><td class="num">100%</td></tr>'
-    : '<tr><td colspan="4" style="color:var(--muted);padding:14px">Os orçamentos comparáveis não têm etapas detalhadas.</td></tr>';
+  var faixa=function(a,b){ return Math.round(a)===Math.round(b)?engMoeda(a):engMoeda(a)+" a "+engMoeda(b); };
+  var fonteTxt={base:'<span class="badge s-ni">modelo</span>',fornecedor:'<span class="badge s-ok">fornecedor</span>',parametro:'<span class="badge s-and">parâmetro</span>'};
+  document.getElementById("simComp").innerHTML=R.etapas.map(function(x){
+    return '<tr title="'+engEsc(x.ref)+'"><td>'+engEsc(x.nome)+'</td><td>'+fonteTxt[x.fonte]+'</td><td class="num">'+faixa(x.min,x.max)+'</td>'+
+      '<td class="num">'+(x.comBdi?faixa(x.bdiMin,x.bdiMax):'<span style="color:var(--muted)">sem BDI</span>')+'</td><td class="num"><b>'+faixa(x.finMin,x.finMax)+'</b></td>'+
+      '<td class="num">'+engPct(((x.finMin+x.finMax)/2)/c)+'</td></tr>'; }).join("")+
+    '<tr><td><b>Total estimado</b></td><td></td><td class="num"><b>'+faixa(R.diretoMin,R.diretoMax)+'</b></td><td class="num">'+faixa(R.lo-R.diretoMin,R.hi-R.diretoMax)+'</td>'+
+    '<td class="num"><b>'+faixa(R.lo,R.hi)+'</b></td><td class="num">100%</td></tr>';
   /* ajustes */
   var alts=[], pads=["Standard","Plus","Premium"], ip=pads.indexOf(p.pad);
   if(p.quad>1) alts.push({t:"Uma quadra a menos",p:Object.assign({},p,{quad:p.quad-1})});
   if(p.inf) alts.push({t:"Sem quadra infantil",p:Object.assign({},p,{inf:false})});
   if(ip>0) alts.push({t:"Edificação "+pads[ip-1]+" ("+ENG_PADROES[KEY(pads[ip-1])].toLowerCase()+")",p:Object.assign({},p,{pad:pads[ip-1]})});
-  if(p.piso) alts.push({t:"Sem exigência de piso",p:Object.assign({},p,{piso:""})});
+  if(p.piso==="rapido") alts.push({t:"Quadra de saibro no lugar do piso rápido",p:Object.assign({},p,{piso:"saibro"})});
   alts.push({t:"Uma quadra a mais (expansão)",p:Object.assign({},p,{quad:p.quad+1})});
   document.getElementById("simSugs").innerHTML='<div class="sg" style="margin:0">'+alts.map(function(a){
-    var N=simEstimar(a.p);
-    if(!N.n) return '<div class="sgo"><span class="q"><b>'+a.t+'</b><small>sem orçamentos comparáveis no banco</small></span><span class="r ruim">—</span></div>';
-    var d=N.central-c, fit=N.hi<=p.disp?engPill("cabe","ok"):(N.lo<=p.disp?engPill("cabe com ajustes","and"):engPill("não cabe","atr"));
-    return '<div class="sgo"><span class="q"><b>'+a.t+'</b><small>novo total central '+engMi(N.central)+' · base de '+N.n+' orçamento(s)</small></span>'+
+    var N=simCalcular(a.p), d=N.central-c, fit=N.hi<=p.disp?engPill("cabe","ok"):(N.lo<=p.disp?engPill("cabe com ajustes","and"):engPill("não cabe","atr"));
+    return '<div class="sgo"><span class="q"><b>'+a.t+'</b><small>novo total central '+engMi(N.central)+' (faixa '+engMi(N.lo)+' a '+engMi(N.hi)+')</small></span>'+
       '<span class="r '+(d<0?"bom":"ruim")+'" style="'+(d>0?"color:var(--red)":"")+'">'+(d<0?"economia ":"acréscimo ")+engMi(Math.abs(d))+' &nbsp;'+fit+'</span></div>';
   }).join("")+'</div>';
 }
 
-/* ---- estudo orçamentário (após o anteprojeto) ---- */
-function estParams(){
-  return {pad:document.getElementById("estPad").value, quad:Math.max(1,Math.round(+document.getElementById("estQuad").value||1)),
-    piso:document.getElementById("estPiso").value, uf:document.getElementById("estUF").value,
-    area:+document.getElementById("estArea").value||0, disp:+document.getElementById("estDisp").value||0};
+/* banco de orçamentos do Supabase: só como comparação (mediana dos comparáveis corrigidos) */
+function simComparaveis(p){
+  var base=ENG.d.orc.filter(function(o){ return KEY(o.padrao)===KEY(p.pad) && (Number(o.total_com_bdi)||Number(o.total_sem_bdi)); });
+  var exatos=base.filter(function(o){ return +o.qtd_quadras===+p.quad; });
+  var vs=exatos.map(function(o){ return engValorHoje(o, Number(o.total_com_bdi)||Number(o.total_sem_bdi), p.uf); });
+  return {n:vs.length, central:vs.length?engQuartil(vs,.5):null};
 }
+
+/* ================= ESTUDO ORÇAMENTÁRIO (moldes das Análises Orçamentárias) ================= */
+function estParams(){
+  return {unid:document.getElementById("estUnid").value.trim(), pad:document.getElementById("estPad").value,
+    quad:Math.max(1,Math.round(+document.getElementById("estQuad").value||1)), piso:document.getElementById("estPiso").value,
+    inf:document.getElementById("estInf").value==="sim", uf:document.getElementById("estUF").value,
+    lote:+document.getElementById("estLote").value||0, area:+document.getElementById("estArea").value||0,
+    disp:+document.getElementById("estDisp").value||0, desn:false};
+}
+function estConclusaoPadrao(R){
+  var p=R.p;
+  return "Após análise das características do empreendimento"+(p.unid?" Fast Tennis "+p.unid:"")+", o estudo considera "+p.quad+" quadra(s) de "+(p.piso==="rapido"?"piso rápido":"saibro")+
+    (p.inf?", quadra infantil coberta":"")+" e edificação no padrão "+p.pad+" ("+ENG_PADROES[KEY(p.pad)].toLowerCase()+"). "+
+    "A principal parcela do investimento concentra-se "+(function(){ var m=R.etapas.slice().sort(function(a,b){ return (b.finMax+b.finMin)-(a.finMax+a.finMin); })[0]; return m?"na etapa "+m.nome.toLowerCase():"nas quadras"; })()+". "+
+    "Os quantitativos foram adotados como premissas técnicas a partir do orçamento-modelo da engenharia e deverão ser confirmados com levantamento in loco e com os orçamentos das empresas executoras.";
+}
+var EST={concEditada:false};
 function estCalc(){
-  var p=estParams(), C=simComparaveis(p), reg=engRegiaoDaUF(p.uf);
-  var suf=C.n>=5?engPill("Base suficiente","ok"):C.n>=3?engPill("Base limitada","and"):engPill("Base insuficiente","atr");
-  document.getElementById("estCards").innerHTML=[
-    ["Mediana do total",C.n?engMi(C.central):"—",""],
-    ["Faixa comum (1º a 3º quartil)",C.n?engMi(C.lo).replace(" mi","")+" – "+engMi(C.hi).replace("R$ ",""):"—",""],
-    ["Custo por m² construído",C.n&&p.area?engMoeda(C.central/p.area)+"/m²":"—","",p.area?"mediana ÷ área informada":"informe a área construída"],
-    ["Obras comparáveis · "+p.pad,C.n,"",suf]
-  ].map(function(c){ return '<div class="card '+c[2]+'"><div class="k">'+c[0]+'</div><div class="v" style="font-size:22px">'+c[1]+'</div>'+(c[3]?'<div class="sub2">'+c[3]+'</div>':'')+'</div>'; }).join("");
-  /* etapas: quartis dos valores corrigidos de cada etapa */
-  var etapas=ENG.d.eap.length?ENG.d.eap.map(function(e){ return {cod:txt(e.codigo),nome:txt(e.nome)}; }):[], vals={};
-  C.itens.forEach(function(it){
-    var fator=it.v/((Number(it.o.total_com_bdi)||Number(it.o.total_sem_bdi))||1), E=engEtapasDoOrc(it.o);
-    if(!etapas.length) etapas=E.etapas;
-    E.linhas.forEach(function(x){ var k=KEY(x.etapa_codigo); (vals[k]=vals[k]||[]).push((Number(x.total_com_bdi)||Number(x.total_sem_bdi)||0)*fator); });
-  });
-  var linhas=etapas.map(function(e){ var a=vals[KEY(e.cod)]||[]; return {nome:e.nome||e.cod, q1:engQuartil(a,.25), md:engQuartil(a,.5), q3:engQuartil(a,.75)}; })
-    .filter(function(x){ return x.md; });
-  var somaMd=linhas.reduce(function(s,x){ return s+x.md; },0);
-  document.getElementById("estEtapas").innerHTML=linhas.length?linhas.map(function(x){
-    return '<tr><td>'+engEsc(x.nome)+'</td><td class="num">'+engMoeda(x.q1)+'</td><td class="num"><b>'+engMoeda(x.md)+'</b></td><td class="num">'+engMoeda(x.q3)+'</td><td class="num">'+engPct(x.md/somaMd)+'</td></tr>'; }).join("")
-    : '<tr><td colspan="5" style="color:var(--muted);padding:14px">'+(C.n?"Os orçamentos comparáveis não têm etapas detalhadas.":"Sem orçamentos comparáveis no banco.")+'</td></tr>';
-  /* fornecedores indicados: atua na região, tem slot livre na região e no total, nota ≥ 3,5 (ou novo) */
-  document.getElementById("estFiltroTxt").textContent="Filtro automático: atua no "+(reg||"—")+" · tem slot livre na região · nota mínima 3,5 · preço comparado ao estudo e ao valor disponível"+
-    (C.notas.length?" · "+C.notas.join(" · "):"")+". "+engRefTxt();
-  var ok=[], fora=[];
-  ENG.d.forn.forEach(function(f){
-    var x=engFornInfo(f), lr=x.linhas.find(function(l){ return txt(l.regiao)===reg; });
-    var atua=!!lr||x.reg.indexOf(reg)>=0;
-    var livres=engLivreRegiao(lr,x.tot), livresTot=x.tot.slots_livres_total!=null?Number(x.tot.slots_livres_total):null;
-    if(!atua) fora.push([f,"não atua no "+reg]);
-    else if((livres!=null&&livres<=0)||(livresTot!=null&&livresTot<=0)) fora.push([f,"sem slot livre no "+reg]);
-    else if(x.nota!=null&&x.nota<3.5) fora.push([f,"nota abaixo de 3,5"]);
-    else {
-      var pr=engPrecoReg(f.id,reg), m2=pr.m2, pq=pr.quadra;
-      var partes=(m2&&p.area?1:0)+(pq?1:0);
-      var est=partes?(m2&&p.area?m2*p.area:0)+(pq?pq*p.quad:0):null, parcial=partes===1;
-      var cabe=est==null||!p.disp?"":(est<=p.disp*0.98?"cabe":(est<=p.disp*1.02?"limite":"acima"));
-      ok.push({x:x, livres:livres, m2:m2, pq:pq, est:est, parcial:parcial, dv:est!=null&&!parcial&&C.n?(est-C.central)/C.central*100:null, cabe:parcial?"":cabe});
+  var p=estParams(), R=simCalcular(p);
+  var conc=document.getElementById("estConc");
+  if(!EST.concEditada) conc.value=estConclusaoPadrao(R);
+  document.getElementById("estDoc").innerHTML=estDocHTML(R,conc.value);
+}
+function estFaixa(a,b){ return Math.round(a)===Math.round(b)?engMoeda(a):engMoeda(a)+" a "+engMoeda(b); }
+function estServicos(ordem){
+  var its=ENG.d.baseIt.filter(function(i){ return +i.etapa_ordem===+ordem && i.fonte!=="MODELO"; });
+  var grupos=uniq(its.map(function(i){ return txt(i.grupo); }).filter(Boolean));
+  var lista=grupos.length?grupos:its.slice().sort(function(a,b){ return (Number(b.total)||0)-(Number(a.total)||0); }).slice(0,6).map(function(i){ return engCap1(i.descricao); });
+  return lista.slice(0,8);
+}
+function estDocHTML(R,conclusao){
+  var p=R.p, hojeTxt=fmtdA(hoje), bdiTxt=engNum(R.bdi*100,0)+"%";
+  var titulo="ANÁLISE ORÇAMENTÁRIA - FAST TENNIS "+(p.unid?p.unid.toUpperCase():"")+"/"+p.uf;
+  var etapasHTML=R.etapas.map(function(x,i){
+    var serv=x.fonte==="base"?estServicos(x.ordem):[];
+    return '<div class="rl-sec"><h2>ETAPA '+String(i+1).padStart(2,"0")+' – '+engEsc(x.nome)+'</h2>'+
+      (serv.length?'<div style="font-size:12.5px;margin-bottom:6px"><b>Serviços previstos:</b><ul style="margin:4px 0 0;padding-left:18px">'+serv.map(function(s){ return '<li>'+engEsc(s)+'</li>'; }).join("")+'</ul></div>':'')+
+      '<div style="font-size:12.5px;line-height:1.7"><b>Valor de referência:</b> '+engEsc(x.ref)+'<br>'+
+      '<b>Custo direto:</b> '+estFaixa(x.min,x.max)+'<br>'+
+      (x.comBdi?'<b>BDI – '+bdiTxt+':</b> '+estFaixa(x.bdiMin,x.bdiMax)+'<br>':'<b>BDI:</b> não aplicado (preço já praticado pelo fornecedor)<br>')+
+      '<b>Valor final:</b> '+estFaixa(x.finMin,x.finMax)+'</div></div>';
+  }).join("");
+  var resumo='<table class="tktab"><thead><tr><th>Etapa</th><th>Valor final (com BDI onde aplicável)</th><th>Participação</th><th>Base</th></tr></thead><tbody>'+
+    R.etapas.map(function(x,i){ return '<tr><td>'+String(i+1).padStart(2,"0")+'. '+engEsc(engCap1(x.nome))+'</td><td>'+estFaixa(x.finMin,x.finMax)+'</td><td>'+engPct(((x.finMin+x.finMax)/2)/R.central)+'</td>'+
+      '<td>'+(x.fonte==="fornecedor"?"Preço de fornecedor":x.fonte==="parametro"?"Parâmetro":"Orçamento-modelo")+'</td></tr>'; }).join("")+'</tbody></table>';
+  var invest='<table class="tktab"><thead><tr><th>Cenário</th><th>Total mínimo</th><th>Total máximo</th></tr></thead><tbody>'+
+    '<tr><td>Custo direto</td><td>'+engMoeda(R.diretoMin)+'</td><td>'+engMoeda(R.diretoMax)+'</td></tr>'+
+    '<tr><td><b>Investimento total estimado</b></td><td><b>'+engMoeda(R.lo)+'</b></td><td><b>'+engMoeda(R.hi)+'</b></td></tr>'+
+    (p.disp?'<tr><td>Valor disponível informado</td><td colspan="2">'+engMoeda(p.disp)+' — '+(R.hi<=p.disp?"cobre a faixa estimada":R.lo<=p.disp?"dentro da faixa estimada":"abaixo da faixa estimada")+'</td></tr>':'')+
+    '</tbody></table>';
+  return '<div class="rl-cab"><div><h1>'+engEsc(titulo)+'</h1><div class="sub">Do For You · Estudo orçamentário preliminar</div></div><div class="per">'+hojeTxt+'</div></div>'+
+    '<div class="rl-sec"><h2>CONSIDERAÇÕES INICIAIS – BDI</h2><div style="font-size:12.5px;line-height:1.6">'+
+      '<p>É importante destacar que empresas de construção civil e executoras de quadras esportivas normalmente aplicam uma taxa denominada BDI (Benefícios e Despesas Indiretas).</p>'+
+      '<p>O BDI contempla despesas administrativas, tributos, seguros, garantias, mobilização de equipe, custos indiretos da obra e margem de lucro da empresa executora.</p>'+
+      '<p>Neste estudo foi adotado um BDI de '+bdiTxt+'. Os valores apresentados demonstram o custo direto estimado da obra e, quando aplicável, a incidência do BDI.</p>'+
+      '<p><b>Observação 1:</b> os valores com preço de fornecedor (quadras e, quando houver, edificação por R$/m²) já refletem os preços praticados por esses prestadores na região '+engEsc(R.reg)+'; sobre eles não foi aplicada nova incidência de BDI, evitando duplicidade.</p>'+
+      '<p><b>Observação 2:</b> este documento constitui exclusivamente um estudo orçamentário preliminar, elaborado a partir do orçamento-modelo da engenharia Fast Tennis (base '+engEsc(R.base.ufBase)+', '+engMesTxt(R.base.dataBase)+'), corrigido pelo INCC-M até hoje e pela diferença regional do custo SINAPI para '+engEsc(p.uf)+' (fator '+engNum(R.fCorr,3)+'). Os valores representam estimativas e poderão variar em função do mercado, da localização, dos fornecedores, da metodologia executiva e das especificações finais do projeto.</p>'+
+      '<p><b>Observação 3:</b> os valores referem-se à execução da obra conforme as etapas descritas neste estudo; itens não expressamente previstos não estão incluídos.</p>'+
+      (R.notas.length?'<p><b>Observação 4:</b> '+engEsc(R.notas.join("; "))+'.</p>':'')+
+    '</div></div>'+etapasHTML+
+    '<div class="rl-sec"><h2>RESUMO POR ETAPA</h2>'+resumo+'</div>'+
+    '<div class="rl-sec"><h2>RESUMO PRELIMINAR DE INVESTIMENTO</h2>'+invest+
+      '<div style="font-size:12px;color:var(--muted);margin-top:6px">O BDI contempla custos indiretos e margem da empresa executora, não correspondendo necessariamente aos impostos incidentes sobre a nota fiscal; a tributação pode variar conforme o regime fiscal da empresa contratada. '+engEsc(engRefTxt())+'</div></div>'+
+    '<div class="rl-sec"><h2>CONCLUSÃO E RECOMENDAÇÃO TÉCNICA</h2><div style="font-size:12.5px;line-height:1.6;white-space:pre-wrap">'+engEsc(conclusao)+'</div></div>'+
+    '<div class="rl-foot">Do For You · estudo gerado pelo Painel de Arquitetura em '+hojeTxt+'</div>';
+}
+/* PDF: abre o documento numa janela própria e imprime (a impressão do painel é reservada ao Relatório) */
+function estPDF(){
+  var doc=document.getElementById("estDoc").innerHTML, p=estParams();
+  var w=window.open("","_blank"); if(!w){ alert("Libere as janelas pop-up do navegador para gerar o PDF."); return; }
+  w.document.write('<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Análise Orçamentária - '+engEsc(p.unid||"Fast Tennis")+'</title>'+
+    '<style>body{font-family:Inter,Arial,sans-serif;color:#19222A;margin:24px;font-size:13px}h1{font-size:18px;color:#15616D;margin:0}h2{font-size:14px;color:#15616D;border-bottom:2px solid #5E9AA3;padding-bottom:4px;margin:18px 0 8px}'+
+    '.rl-cab{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid #15616D;padding-bottom:10px;margin-bottom:14px}.sub{color:#7A858C;font-size:12px}.per{font-weight:700}'+
+    'table{width:100%;border-collapse:collapse;font-size:12px}th,td{border-bottom:1px solid #ECEEF1;padding:6px;text-align:left}th{color:#7A858C;font-size:10px;text-transform:uppercase}'+
+    '.rl-sec{break-inside:avoid}.rl-foot{margin-top:18px;font-size:10px;color:#7A858C;text-align:center}@page{size:A4;margin:14mm}</style></head><body>'+doc+'</body></html>');
+  w.document.close(); w.focus(); setTimeout(function(){ w.print(); },300);
+}
+/* Planilha "Simulador Orçamentário": itens do modelo com quantidades e preços ajustados */
+function estXLSX(){
+  if(typeof XLSX==="undefined"){ alert("A biblioteca de exportação ainda está carregando. Tente de novo em instantes."); return; }
+  var p=estParams(), R=simCalcular(p), rows=[];
+  rows.push(["Orçamento","PROJETO: "+(p.unid||""),"","LOJA: FAST TENNIS "+(p.unid||"").toUpperCase()]);
+  rows.push(["","Base: orçamento-modelo da engenharia Fast Tennis ("+R.base.ufBase+", "+engMesTxt(R.base.dataBase)+") corrigido para "+p.uf+" (fator "+engNum(R.fCorr,3)+") · "+engRefTxt()]);
+  rows.push(["ITEM","DESCRIÇÃO","QUANT.","UNIDADE","VALOR UNITÁRIO","VALOR TOTAL","REFERENCIAL DE CUSTO"]);
+  var totDireto=0, totBdi=0;
+  R.etapas.forEach(function(x,i){
+    var n=i+1, central=(x.min+x.max)/2;
+    rows.push([n+".0",x.nome,"","","",Math.round(central*100)/100,""]);
+    totDireto+=central; if(x.comBdi) totBdi+=central*R.bdi;
+    if(x.fonte==="base" && x.driver!=="edificacao" && !(x.driver==="quadra_servico" && p.piso==="rapido")){
+      var its=ENG.d.baseIt.filter(function(it){ return +it.etapa_ordem===+x.ordem; });
+      var soma=its.reduce(function(s,it){ return s+(Number(it.total)||0); },0)||1;
+      var k=central/soma, esc=x.escala||1, fp=k/esc;   // quantidade escala pelo driver; preço unitário leva a correção
+      its.forEach(function(it,j){
+        var q=(Number(it.quantidade)||0)*esc, u=(Number(it.valor_unitario)||0)*fp;
+        rows.push([n+"."+(j+1),txt(it.descricao),Math.round(q*100)/100,txt(it.unidade),Math.round(u*100)/100,Math.round((Number(it.total)||0)*k*100)/100,txt(it.fonte)+(it.codigo?" "+txt(it.codigo):"")]);
+      });
+    } else {
+      var und=x.driver==="quadra_servico"?"UN":(x.area?"M2":"VB"), qq=x.driver==="quadra_servico"?p.quad:(x.area||1);
+      rows.push([n+".1",x.ref,qq,und,Math.round(central/qq*100)/100,Math.round(central*100)/100,x.fonte==="fornecedor"?"FORNECEDOR":x.fonte==="parametro"?"PARÂMETRO":"MODELO"]);
     }
   });
-  var ord={cabe:0,limite:1,acima:2,"":3};
-  ok.sort(function(a,b){ return (ord[a.cabe]-ord[b.cabe]) || ((b.x.nota==null?3.5:b.x.nota)-(a.x.nota==null?3.5:a.x.nota)) || ((a.est||9e15)-(b.est||9e15)); });
-  var tag={cabe:engPill("Cabe","ok"),limite:engPill("No limite","and"),acima:engPill("Acima","atr"),"":'<span style="color:var(--muted)">—</span>'};
-  document.getElementById("estForn").innerHTML=ok.length?ok.map(function(l,i){
-    return '<tr><td>'+(i+1)+'</td><td><b>'+engVal(l.x.f.empresa)+'</b>'+(l.x.nota==null?' <span class="badge s-ni">novo</span>':'')+'</td><td style="white-space:nowrap">'+engNotaTxt(l.x.nota)+'</td>'+
-      '<td class="num">'+(l.livres==null?"—":engNum(l.livres,1))+'</td><td class="num">'+(l.pq?engNum(l.pq,0):"—")+' · '+(l.m2?engNum(l.m2,0):"—")+'</td>'+
-      '<td class="num">'+(l.est?engMi(l.est)+(l.parcial?' <span style="color:var(--muted);font-weight:400">(parcial)</span>':''):"—")+'</td>'+
-      '<td class="num" style="color:'+(l.dv==null?"var(--muted)":l.dv>5?"var(--red)":l.dv<-5?"#2F6FB0":"var(--ink)")+'">'+(l.dv==null?"—":(l.dv>0?"+":"")+engNum(l.dv,1)+"%")+'</td><td>'+tag[l.cabe]+'</td></tr>'; }).join("")
-    : '<tr><td colspan="8" style="color:var(--muted);padding:14px">Nenhum fornecedor atende aos critérios para '+engEsc(reg||"esta região")+'.</td></tr>';
-  document.getElementById("estFora").innerHTML=fora.length?'<div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:6px">Fora da lista</div><div style="display:flex;flex-wrap:wrap;gap:6px">'+
-    fora.map(function(z){ return '<span class="badge s-ni" style="font-size:10.5px;text-transform:none">'+engEsc(z[0].empresa)+' · '+engEsc(z[1])+'</span>'; }).join("")+'</div>':"";
+  rows.push([]); rows.push(["","","","","","TOTAL OBRA",Math.round(totDireto*100)/100]);
+  rows.push(["","","","","","BDI ("+engNum(R.bdi*100,0)+"%, exceto preços de fornecedor)",Math.round(totBdi*100)/100]);
+  rows.push(["","","","","","VALOR FINAL DA OBRA (COM BDI)",Math.round((totDireto+totBdi)*100)/100]);
+  var ws=XLSX.utils.aoa_to_sheet(rows);
+  ws["!cols"]=[{wch:7},{wch:70},{wch:10},{wch:9},{wch:15},{wch:16},{wch:26}];
+  var wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,"Orçamento");
+  XLSX.writeFile(wb,"Simulador_Orcamentario_"+(p.unid||"FastTennis").replace(/[^A-Za-z0-9]+/g,"_")+".xlsx");
 }
-/* projeto escolhido no estudo: traz padrão e quadras do cadastro do painel */
+/* projeto escolhido no estudo: traz unidade, padrão e quadras do cadastro do painel */
 function estProjeto(){
-  var id=document.getElementById("estProj").value; if(!id) { estCalc(); return; }
+  var id=document.getElementById("estProj").value; if(!id){ estCalc(); return; }
   var cp=COL.PROJETOS||{}, r=(DADOS.PROJETOS||[]).find(function(x){ return txt(G(x,cp.id))===id; });
   if(r){
+    document.getElementById("estUnid").value=txt(G(r,cp.nome)).replace(/^(FAST TENNIS|FT)\s+/i,"");
     var pad=engCap1(G(r,cp.padrao)); if(["Standard","Plus","Premium"].indexOf(pad)>=0) document.getElementById("estPad").value=pad;
     var q=+num(G(r,cp.qtdQuadras)); if(q>=1) document.getElementById("estQuad").value=String(q);
+    var a=cp.area>=0?+num(G(r,cp.area)):0; if(a>0) document.getElementById("estLote").value=String(a);
   }
   estCalc();
 }
@@ -5332,10 +5428,13 @@ function estProjeto(){
   [["simPad","pad"],["simDesn","desn"],["simInf","inf"]].forEach(function(p){
     [].forEach.call(document.querySelectorAll("#"+p[0]+" button"),function(b){ b.addEventListener("click",function(){
       [].forEach.call(document.querySelectorAll("#"+p[0]+" button"),function(x){ x.classList.toggle("on",x===b); });
-      SIM[p[1]]=b.dataset.v; if(ENG.carregado) simCalc(); }); });
+      SIM[p[1]]=b.dataset.v; if(ENG.carregado&&simBaseOk()) simCalc(); }); });
   });
-  ["simDisp","simQuad","simPiso","simUF","simLote"].forEach(function(id){ document.getElementById(id).addEventListener("input",function(){ if(ENG.carregado) simCalc(); }); });
-  ["estPad","estQuad","estPiso","estUF","estArea","estDisp"].forEach(function(id){ document.getElementById(id).addEventListener("input",function(){ if(ENG.carregado) estCalc(); }); });
+  ["simDisp","simQuad","simPiso","simUF","simLote","simArea"].forEach(function(id){ document.getElementById(id).addEventListener("input",function(){ if(ENG.carregado&&simBaseOk()) simCalc(); }); });
+  ["estUnid","estPad","estQuad","estPiso","estInf","estUF","estLote","estArea","estDisp"].forEach(function(id){ document.getElementById(id).addEventListener("input",function(){ if(ENG.carregado&&simBaseOk()) estCalc(); }); });
+  document.getElementById("estConc").addEventListener("input",function(){ EST.concEditada=true; if(ENG.carregado&&simBaseOk()) document.getElementById("estDoc").innerHTML=estDocHTML(simCalcular(estParams()),this.value); });
+  document.getElementById("estPDF").addEventListener("click",function(){ if(ENG.carregado&&simBaseOk()){ estCalc(); estPDF(); } });
+  document.getElementById("estXLSX").addEventListener("click",function(){ if(ENG.carregado&&simBaseOk()) estXLSX(); });
   document.getElementById("estProj").addEventListener("change",function(){ if(ENG.carregado) estProjeto(); });
   /* ↻ Atualizar também relê a engenharia, se ela já tiver sido aberta */
   document.getElementById("refresh").addEventListener("click",function(){
@@ -5684,3 +5783,5 @@ function engFichaObra(pid){
 </script>
 </body>
 </html>
+
+  

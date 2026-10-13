@@ -908,7 +908,9 @@ ul.prev .muted{color:var(--muted);font-size:11px}
           <div class="fld"><label>Unidade</label><input type="text" id="simUnid" placeholder="ex.: FT.158 · Maringá/PR"></div>
           <div class="fld"><label>Valor disponível para investir (R$)</label><input type="number" id="simDisp" min="0" step="50000" value="2400000"></div>
           <div class="fld"><label>Quantidade de quadras</label>
-            <div class="segbtns" id="simQuad"><button type="button" data-v="2">2</button><button type="button" data-v="3" class="on">3</button><button type="button" data-v="4">4</button><button type="button" data-v="5">5</button><button type="button" data-v="6">6</button></div></div>
+            <input type="number" id="simQuad" min="1" step="1" value="1"></div>
+          <div class="fld"><label>Tem quadra infantil? <small style="font-weight:400;color:var(--muted)">— sempre coberta</small></label>
+            <div class="segbtns" id="simInf"><button type="button" data-v="nao" class="on">Não</button><button type="button" data-v="sim">Sim</button></div></div>
           <div class="fld"><label>Piso da quadra</label><select id="simPiso"><option value="">Qualquer piso</option></select></div>
           <div class="fld"><label>Padrão da edificação</label>
             <div class="segbtns" id="simPad"><button type="button" data-v="Standard">Standard</button><button type="button" data-v="Plus" class="on">Plus</button><button type="button" data-v="Premium">Premium</button></div></div>
@@ -942,7 +944,7 @@ ul.prev .muted{color:var(--muted);font-size:11px}
         <div class="tkbar" style="margin-bottom:0">
           <select id="estProj" class="tksel" title="Projeto"><option value="">Projeto (opcional)</option></select>
           <select id="estPad" class="tksel" title="Padrão"><option>Standard</option><option selected>Plus</option><option>Premium</option></select>
-          <select id="estQuad" class="tksel" title="Quadras"><option value="2">2 quadras</option><option value="3">3 quadras</option><option value="4" selected>4 quadras</option><option value="5">5 quadras</option><option value="6">6 quadras</option></select>
+          <input id="estQuad" class="tkin" type="number" min="1" step="1" value="1" title="Quantidade de quadras" placeholder="Quadras" style="flex:0 1 110px;min-width:90px">
           <select id="estPiso" class="tksel" title="Piso"><option value="">Qualquer piso</option></select>
           <select id="estUF" class="tksel" title="UF da obra"></select>
           <input id="estArea" class="tkin" type="number" min="0" placeholder="Área construída (m²)" style="flex:0 1 190px;min-width:160px">
@@ -956,9 +958,9 @@ ul.prev .muted{color:var(--muted);font-size:11px}
         </div>
         <div class="panel col12"><h3>Fornecedores disponíveis para esta obra</h3>
           <div style="font-size:12px;color:var(--muted);margin:-8px 0 12px" id="estFiltroTxt"></div>
-          <div class="tkwrap"><table class="tktab"><thead><tr><th>#</th><th>Fornecedor</th><th>Nota</th><th>Slots livres na região</th><th>R$/m² na região</th><th>Estimativa da obra</th><th>× estudo</th><th>× disponível</th></tr></thead><tbody id="estForn"></tbody></table></div>
+          <div class="tkwrap"><table class="tktab"><thead><tr><th>#</th><th>Fornecedor</th><th>Nota</th><th>Vagas livres na região</th><th>R$/quadra · R$/m² civil</th><th>Estimativa da obra</th><th>× estudo</th><th>× disponível</th></tr></thead><tbody id="estForn"></tbody></table></div>
           <div id="estFora" style="margin-top:12px"></div>
-          <div class="hint">Estimativa = preço médio do m² cobrado pelo fornecedor na região × área construída. Serve para pré-selecionar quem convidar para orçar; o valor final vem do orçamento de cada um.</div>
+          <div class="hint">Estimativa = R$/m² civil do fornecedor na região × área construída + R$ por quadra × nº de quadras. Quando só um dos dois preços existe, a estimativa aparece como parcial e não é comparada ao estudo. Serve para pré-selecionar quem convidar para orçar; o valor final vem do orçamento de cada um.</div>
         </div>
       </div>
     </div>
@@ -1073,7 +1075,7 @@ ul.prev .muted{color:var(--muted);font-size:11px}
         </table>
         <div id="engFornVazio" class="tkvazio" style="display:none">Nenhum fornecedor com esses filtros.</div>
       </div>
-      <div class="section-title">Preço médio do m² por região <span style="text-transform:none;letter-spacing:0;font-weight:500">· R$/m² construído · cor compara com a média da região</span></div>
+      <div class="section-title">Preço médio por região <span style="text-transform:none;letter-spacing:0;font-weight:500">· R$/m² civil e R$ por quadra · cor compara com a média da região</span></div>
       <div class="tkwrap"><table class="tktab" id="engM2"></table></div>
       <div class="legenda"><span><i style="background:#E6F1EC;border:1px solid #D3E7DE"></i>Abaixo da média da região</span><span><i style="background:#FBF0DA;border:1px solid #F0E0B8"></i>Acima da média da região</span></div>
     </div>
@@ -4653,7 +4655,7 @@ function engSituacaoObra(o){
 function engRenderObras(){
   var marcos=ENG.d.marcos;
   var L=ENG.d.obras.slice().sort(function(a,b){ return txt(a.unidade).localeCompare(txt(b.unidade),"pt"); });
-  var andamento=L.filter(function(o){ return KEY(o.fase).indexOf("CONCLU")<0 && KEY(o.fase).indexOf("CANCEL")<0; });
+  var andamento=L.filter(function(o){ return engObraAtiva(o.fase); });   // mesmo critério da view de ocupação
   var sits=L.map(engSituacaoObra);
   var nAtras=sits.filter(function(s){ return s.st==="late"; }).length;
   var garg=engGargalos(), pior=garg.filter(function(g){ return g.real!=null&&g.meta; }).sort(function(a,b){ return (b.real-b.meta)-(a.real-a.meta); })[0];
@@ -4682,7 +4684,7 @@ function engRenderObras(){
     var orc=ENG.d.obraForn.filter(function(x){ return String(x.obra_id)===String(o.id); })
       .reduce(function(t,x){ return t+(Number(x.valor_orcado)||0); },0);
     var pad=engObraPadrao(o);
-    return '<tr><td class="tkpid" style="white-space:nowrap">'+engVal(o.unidade)+(ft?' <span class="badge s-ok" title="Projeto do painel">'+engEsc(ft)+'</span>':'')+
+    return '<tr data-engobra="'+engEsc(o.id)+'"><td class="tkpid" style="white-space:nowrap">'+engVal(o.unidade)+(ft?' <span class="badge s-ok" title="Projeto do painel">'+engEsc(ft)+'</span>':'')+
         '<div style="font-weight:400;color:var(--muted);font-size:11.5px">'+engEsc([o.cidade,o.uf].filter(Boolean).join("/"))+'</div></td>'+
       '<td title="'+engEsc(ENG_PADROES[KEY(pad)]||"")+'">'+engVal(pad)+'</td><td>'+engVal(engObraForns(o).join(", "))+'</td>'+
       s.ms.map(function(p){ var e=engEstadoMarco(p.x);
@@ -4990,6 +4992,18 @@ function engFornInfo(f){
   var ocs=ENG.d.oc.filter(function(o){ return String(o.fornecedor_id)===String(f.id); });
   return {f:f, linhas:linhas, tot:linhas[0]||{}, serv:serv, reg:uniq(regs).sort(), nota:engNotaDe(f), ocs:ocs, ocNota:ocs.filter(engContaNaNota).length};
 }
+function engPrecoReg(fid,reg){
+  var y=ENG.d.fornReg.find(function(z){ return String(z.fornecedor_id)===String(fid)&&txt(z.regiao)===txt(reg); })||{};
+  var m2=Number(y.preco_m2_civil)||Number(y.preco_m2)||null, q=Number(y.preco_quadra)||null;
+  return {m2:m2, quadra:q};
+}
+/* vaga livre na região: cota da região − obras ativas na região, limitada às vagas livres do fornecedor no total */
+function engLivreRegiao(r,tot){
+  if(!r||r.max_obras==null) return null;
+  var reg=Math.max(0,Number(r.max_obras)-(Number(r.obras_ativas)||0));
+  var t=tot&&tot.slots_livres_total!=null?Number(tot.slots_livres_total):null;
+  return t==null?reg:Math.min(reg,t);
+}
 function engOcupTxt(t){
   var at=t.obras_ativas_total!=null?t.obras_ativas_total:0;
   return engNum(at)+' de '+(t.max_obras_total==null?'<span style="color:var(--muted);font-weight:500">a definir</span>':engNum(t.max_obras_total));
@@ -5048,26 +5062,31 @@ function engRenderForn(){
   }).join("");
   [].forEach.call(body.querySelectorAll("[data-engforn]"),function(tr){ tr.onclick=function(){ engAbrirForn(tr.getAttribute("data-engforn")); }; });
 
-  /* preço médio do m² por região */
-  var regs=engRegioes(), med={};
-  regs.forEach(function(r){ var v=ENG.d.fornReg.filter(function(x){ return txt(x.regiao)===r && Number(x.preco_m2); }).map(function(x){ return Number(x.preco_m2); });
-    med[r]=v.length?v.reduce(function(s,y){ return s+y; },0)/v.length:null; });
-  var comPreco=todos.filter(function(x){ return ENG.d.fornReg.some(function(y){ return String(y.fornecedor_id)===String(x.f.id)&&Number(y.preco_m2); }); });
-  document.getElementById("engM2").innerHTML='<thead><tr><th>Fornecedor</th>'+regs.map(function(r){ return '<th>'+r+'</th>'; }).join("")+'</tr></thead><tbody>'+
-    (comPreco.length?comPreco.map(function(x){
-      return '<tr><td>'+engVal(x.f.empresa)+'</td>'+regs.map(function(r){
-        var y=ENG.d.fornReg.find(function(z){ return String(z.fornecedor_id)===String(x.f.id)&&txt(z.regiao)===r; });
-        var v=y?Number(y.preco_m2):0; if(!v) return '<td class="num" style="color:var(--muted)">—</td>';
-        var cls=med[r]&&v<med[r]?"p1":(med[r]&&v>med[r]?"p2":"");
-        return '<td class="num">'+(cls?'<span class="pill2 '+cls+'">'+engNum(v,0)+'</span>':engNum(v,0))+'</td>'; }).join("")+'</tr>'; }).join("")+
-      '<tr><td><b>Média da região</b></td>'+regs.map(function(r){ return '<td class="num"><b>'+(med[r]?engNum(med[r],0):"—")+'</b></td>'; }).join("")+'</tr>'
-    : '<tr><td colspan="'+(regs.length+1)+'" style="color:var(--muted);padding:14px">Sem preços cadastrados (eng_fornecedor_regioes.preco_m2).</td></tr>')+'</tbody>';
+  /* preço médio por região: R$/m² civil e R$ por quadra (eng_fornecedor_regioes) */
+  var regs=engRegioes();
+  var tabela=function(campo,titulo){
+    var med={};
+    regs.forEach(function(r){ var v=todos.map(function(x){ return engPrecoReg(x.f.id,r)[campo]; }).filter(Boolean);
+      med[r]=v.length?v.reduce(function(s,y){ return s+y; },0)/v.length:null; });
+    var com=todos.filter(function(x){ return regs.some(function(r){ return engPrecoReg(x.f.id,r)[campo]; }); });
+    return '<thead><tr><th>'+titulo+'</th>'+regs.map(function(r){ return '<th>'+r+'</th>'; }).join("")+'</tr></thead><tbody>'+
+      (com.length?com.map(function(x){
+        return '<tr><td>'+engVal(x.f.empresa)+'</td>'+regs.map(function(r){
+          var v=engPrecoReg(x.f.id,r)[campo]; if(!v) return '<td class="num" style="color:var(--muted)">—</td>';
+          var cls=med[r]&&v<med[r]?"p1":(med[r]&&v>med[r]?"p2":"");
+          return '<td class="num">'+(cls?'<span class="pill2 '+cls+'">'+engNum(v,0)+'</span>':engNum(v,0))+'</td>'; }).join("")+'</tr>'; }).join("")+
+        '<tr><td><b>Média da região</b></td>'+regs.map(function(r){ return '<td class="num"><b>'+(med[r]?engNum(med[r],0):"—")+'</b></td>'; }).join("")+'</tr>'
+      : '<tr><td colspan="'+(regs.length+1)+'" style="color:var(--muted);padding:14px">Sem preços cadastrados.</td></tr>')+'</tbody>';
+  };
+  document.getElementById("engM2").innerHTML=tabela("m2","R$/m² civil");
+  var tq=document.getElementById("engQuadra");
+  if(!tq){ document.getElementById("engM2").parentNode.insertAdjacentHTML("afterend",'<div class="tkwrap" style="margin-top:12px"><table class="tktab" id="engQuadra"></table></div>'); tq=document.getElementById("engQuadra"); }
+  tq.innerHTML=tabela("quadra","R$ por quadra");
 }
 function engAbrirForn(id){
   var f=ENG.d.forn.find(function(x){ return String(x.id)===String(id); }); if(!f) return;
   var x=engFornInfo(f), t=x.tot, n=ENG.d.notas[f.id]||{};
   var linhas=x.linhas.slice().sort(function(a,b){ return txt(a.regiao).localeCompare(txt(b.regiao),"pt"); });
-  var preco=function(reg){ var y=ENG.d.fornReg.find(function(z){ return String(z.fornecedor_id)===String(f.id)&&txt(z.regiao)===txt(reg); }); return y&&Number(y.preco_m2)?engNum(y.preco_m2,0):"—"; };
   var comp=[["Prazo",n.prazo,"30%"],["Qualidade",n.qualidade,"30%"],["Avaliação do franqueado",n.franqueado,"20%"],["Aderência ao orçamento",n.aderencia,"20%"]];
   var cm=ENG.d.coment.filter(function(c){ return String(c.fornecedor_id)===String(f.id); });
   var lista=function(tipo){ var a=cm.filter(function(c){ return c.tipo===tipo; });
@@ -5078,12 +5097,14 @@ function engAbrirForn(id){
     engCelulas([["Serviços",x.serv.join(", ")],["Telefone",f.telefone],["Contato",f.contato],["Obras executadas",f.obras_executadas],
       ["Obras ativas (total)",engOcupTxt(t),1],["Slots livres (total)",engSlots(t.slots_livres_total,t.max_obras_total),1]])+
     '<div class="pjf-sec">Capacidade por região</div>'+
-    '<div class="tkwrap"><table class="tktab"><thead><tr><th>Região</th><th>Obras ativas</th><th>Cota (máx. obras)</th><th>Slots livres</th><th>R$/m²</th></tr></thead><tbody>'+
+    '<div class="tkwrap"><table class="tktab"><thead><tr><th>Região</th><th>Obras ativas</th><th>Cota (máx. obras)</th><th>Vagas livres na região</th><th>R$/quadra</th><th>R$/m² civil</th></tr></thead><tbody>'+
     (linhas.length ? linhas.map(function(r){
       return '<tr><td>'+engVal(r.regiao)+'</td><td class="num">'+engNum(r.obras_ativas!=null?r.obras_ativas:0)+'</td>'+
         '<td class="num">'+(r.max_obras==null?'<span style="color:var(--muted);font-weight:500">a definir</span>':engNum(r.max_obras,1))+'</td>'+
-        '<td class="num">'+engSlots(r.slots_livres,r.max_obras)+'</td><td class="num">'+preco(r.regiao)+'</td></tr>';
-    }).join("") : '<tr><td colspan="5" style="padding:14px;color:var(--muted)">Sem regiões cadastradas.</td></tr>')+'</tbody></table></div>'+
+        '<td class="num">'+engSlots(engLivreRegiao(r,t),r.max_obras)+'</td><td class="num">'+(engPrecoReg(f.id,r.regiao).quadra?engNum(engPrecoReg(f.id,r.regiao).quadra,0):"—")+'</td>'+
+        '<td class="num">'+(engPrecoReg(f.id,r.regiao).m2?engNum(engPrecoReg(f.id,r.regiao).m2,0):"—")+'</td></tr>';
+    }).join("") : '<tr><td colspan="6" style="padding:14px;color:var(--muted)">Sem regiões cadastradas.</td></tr>')+'</tbody></table></div>'+
+    '<div class="hint">Obra ativa = fase Em execução ou Fase final. A vaga da região é a cota menos as obras ativas ali, limitada às vagas livres no total.</div>'+
     '<div class="pjf-sec">Composição da nota <span style="text-transform:none;font-weight:500">('+(n.avaliacoes||0)+' avaliação(ões))</span></div>'+
     (n.avaliacoes?comp.map(function(c){ var v=Number(c[1])||0;
       return '<div class="brk" style="border:0;padding:0;margin:0"><div class="row"><span class="nm" style="width:170px">'+c[0]+' · '+c[2]+'</span><span class="bw"><span class="bf" style="width:'+(v/5*100)+'%;background:'+(v<3.5?HEX.red:HEX.green)+'"></span></span><span class="ct" style="width:30px">'+engNum(v,1)+'</span></div></div>'; }).join("")
@@ -5102,7 +5123,9 @@ function engAbrirForn(id){
    Estimativa pelo banco real: mediana dos orçamentos comparáveis (mesmo padrão e nº de quadras),
    cada um corrigido por corrigirValor (INCC até hoje + diferença regional SINAPI). Faixa = 1º a 3º quartil.
    ================================================================ */
-var SIM={aba:"inv", quad:3, pad:"Plus", desn:"nao"};
+var SIM={aba:"inv", pad:"Plus", desn:"nao", inf:"nao"};
+/* adicionais do simulador fora do banco (valores internos da engenharia, não de mercado) */
+var SIM_ADICIONAIS={quadraInfantil:{nome:"Quadra infantil coberta", min:60000, central:80000, max:100000}};
 function simAbrir(){ if(!engPodeVer()) return; engGarantir(simRender); }
 function simMontarFiltros(){
   var ufs=Object.keys(REF_MERCADO.ufRegiao).sort();
@@ -5158,15 +5181,25 @@ function simComposicao(C){
   return L;
 }
 function simParams(){
-  return {disp:+document.getElementById("simDisp").value||0, quad:SIM.quad, pad:SIM.pad,
-    piso:document.getElementById("simPiso").value, uf:document.getElementById("simUF").value};
+  return {disp:+document.getElementById("simDisp").value||0, quad:Math.max(1,Math.round(+document.getElementById("simQuad").value||1)), pad:SIM.pad,
+    piso:document.getElementById("simPiso").value, uf:document.getElementById("simUF").value, inf:SIM.inf==="sim"};
+}
+/* estimativa = comparáveis do banco + adicionais (quadra infantil coberta) */
+function simEstimar(p){
+  var C=simComparaveis(p), ad=[];
+  if(p.inf) ad.push(SIM_ADICIONAIS.quadraInfantil);
+  var R={C:C, n:C.n, notas:C.notas, adic:ad, itens:C.itens};
+  if(C.n){ var s=function(k){ return ad.reduce(function(t,a){ return t+a[k]; },0); };
+    R.lo=C.lo+s("min"); R.central=C.central+s("central"); R.hi=C.hi+s("max"); }
+  return R;
 }
 function simCalc(){
-  var p=simParams(), C=simComparaveis(p), v=document.getElementById("simVeredito");
+  var p=simParams(), C=simEstimar(p), v=document.getElementById("simVeredito");
   var setV=function(cls,ico,html){ v.className="alert "+cls; v.innerHTML='<span class="ico">'+ico+'</span><span>'+html+'</span>'; };
   document.getElementById("simBase").innerHTML="Base: <b>"+C.n+"</b> orçamento(s) do banco · padrão "+engEsc(p.pad)+
     " · valores com BDI corrigidos para hoje (INCC) e para "+engEsc(p.uf)+" (SINAPI)"+(C.notas.length?" · "+engEsc(C.notas.join(" · ")):"")+
-    ". Lote e desnível ainda não entram no cálculo (o banco não tem esses dados). Simulação de ordem de grandeza; não substitui o estudo orçamentário. "+engEsc(engRefTxt());
+    (p.inf?" · quadra infantil coberta: +"+engMoeda(SIM_ADICIONAIS.quadraInfantil.min)+" a "+engMoeda(SIM_ADICIONAIS.quadraInfantil.max):"")+
+    ". Lote e desnível ainda não entram no cálculo. Simulação de ordem de grandeza; não substitui o estudo orçamentário. "+engEsc(engRefTxt());
   if(!C.n){
     setV("a-inf","i","<b>Sem base para simular.</b> O banco não tem orçamentos do padrão "+engEsc(p.pad)+".");
     ["simGauge","simComp","simSugs"].forEach(function(id){ document.getElementById(id).innerHTML=""; });
@@ -5188,20 +5221,23 @@ function simCalc(){
     tag(p.disp,-6,"var(--green)",700,"Disponível "+engMi(p.disp))+tag(c,50,"var(--ink)",700,engMi(c))+
     (X(c)-X(min)>12?tag(min,50,"var(--muted)",500,engMi(min)):"")+(X(max)-X(c)>12?tag(max,50,"var(--muted)",500,engMi(max)):"");
   /* composição */
-  var comp=simComposicao(C);
+  var comp=simComposicao(C.C), cBanco=C.C.central;
   document.getElementById("simComp").innerHTML=comp.length?comp.map(function(x){
     return '<tr><td>'+engEsc(x.nome)+'</td><td style="min-width:120px"><div class="prog" style="margin:0"><div class="bar"><div class="fill" style="width:'+Math.round(x.s*100/Math.max.apply(null,comp.map(function(y){ return y.s; })))+'%;background:var(--accent2)"></div></div></div></td>'+
-      '<td class="num">'+engMoeda(c*x.s)+'</td><td class="num">'+engPct(x.s)+'</td></tr>'; }).join("")+
+      '<td class="num">'+engMoeda(cBanco*x.s)+'</td><td class="num">'+engPct(cBanco*x.s/c)+'</td></tr>'; }).join("")+
+    C.adic.map(function(a){ return '<tr><td>'+engEsc(a.nome)+' <span style="color:var(--muted)">(adicional: '+engMoeda(a.min)+' a '+engMoeda(a.max)+')</span></td><td></td>'+
+      '<td class="num">'+engMoeda(a.central)+'</td><td class="num">'+engPct(a.central/c)+'</td></tr>'; }).join("")+
     '<tr><td><b>Total estimado</b></td><td></td><td class="num"><b>'+engMoeda(c)+'</b></td><td class="num">100%</td></tr>'
     : '<tr><td colspan="4" style="color:var(--muted);padding:14px">Os orçamentos comparáveis não têm etapas detalhadas.</td></tr>';
   /* ajustes */
   var alts=[], pads=["Standard","Plus","Premium"], ip=pads.indexOf(p.pad);
-  if(p.quad>2) alts.push({t:"Uma quadra a menos",p:Object.assign({},p,{quad:p.quad-1})});
+  if(p.quad>1) alts.push({t:"Uma quadra a menos",p:Object.assign({},p,{quad:p.quad-1})});
+  if(p.inf) alts.push({t:"Sem quadra infantil",p:Object.assign({},p,{inf:false})});
   if(ip>0) alts.push({t:"Edificação "+pads[ip-1]+" ("+ENG_PADROES[KEY(pads[ip-1])].toLowerCase()+")",p:Object.assign({},p,{pad:pads[ip-1]})});
   if(p.piso) alts.push({t:"Sem exigência de piso",p:Object.assign({},p,{piso:""})});
-  if(p.quad<6) alts.push({t:"Uma quadra a mais (expansão)",p:Object.assign({},p,{quad:p.quad+1})});
+  alts.push({t:"Uma quadra a mais (expansão)",p:Object.assign({},p,{quad:p.quad+1})});
   document.getElementById("simSugs").innerHTML='<div class="sg" style="margin:0">'+alts.map(function(a){
-    var N=simComparaveis(a.p);
+    var N=simEstimar(a.p);
     if(!N.n) return '<div class="sgo"><span class="q"><b>'+a.t+'</b><small>sem orçamentos comparáveis no banco</small></span><span class="r ruim">—</span></div>';
     var d=N.central-c, fit=N.hi<=p.disp?engPill("cabe","ok"):(N.lo<=p.disp?engPill("cabe com ajustes","and"):engPill("não cabe","atr"));
     return '<div class="sgo"><span class="q"><b>'+a.t+'</b><small>novo total central '+engMi(N.central)+' · base de '+N.n+' orçamento(s)</small></span>'+
@@ -5211,7 +5247,7 @@ function simCalc(){
 
 /* ---- estudo orçamentário (após o anteprojeto) ---- */
 function estParams(){
-  return {pad:document.getElementById("estPad").value, quad:+document.getElementById("estQuad").value,
+  return {pad:document.getElementById("estPad").value, quad:Math.max(1,Math.round(+document.getElementById("estQuad").value||1)),
     piso:document.getElementById("estPiso").value, uf:document.getElementById("estUF").value,
     area:+document.getElementById("estArea").value||0, disp:+document.getElementById("estDisp").value||0};
 }
@@ -5244,15 +5280,16 @@ function estCalc(){
   ENG.d.forn.forEach(function(f){
     var x=engFornInfo(f), lr=x.linhas.find(function(l){ return txt(l.regiao)===reg; });
     var atua=!!lr||x.reg.indexOf(reg)>=0;
-    var livres=lr&&lr.slots_livres!=null?Number(lr.slots_livres):null, livresTot=x.tot.slots_livres_total!=null?Number(x.tot.slots_livres_total):null;
+    var livres=engLivreRegiao(lr,x.tot), livresTot=x.tot.slots_livres_total!=null?Number(x.tot.slots_livres_total):null;
     if(!atua) fora.push([f,"não atua no "+reg]);
     else if((livres!=null&&livres<=0)||(livresTot!=null&&livresTot<=0)) fora.push([f,"sem slot livre no "+reg]);
     else if(x.nota!=null&&x.nota<3.5) fora.push([f,"nota abaixo de 3,5"]);
     else {
-      var y=ENG.d.fornReg.find(function(z){ return String(z.fornecedor_id)===String(f.id)&&txt(z.regiao)===reg; });
-      var m2=y&&Number(y.preco_m2)?Number(y.preco_m2):null, est=m2&&p.area?m2*p.area:null;
+      var pr=engPrecoReg(f.id,reg), m2=pr.m2, pq=pr.quadra;
+      var partes=(m2&&p.area?1:0)+(pq?1:0);
+      var est=partes?(m2&&p.area?m2*p.area:0)+(pq?pq*p.quad:0):null, parcial=partes===1;
       var cabe=est==null||!p.disp?"":(est<=p.disp*0.98?"cabe":(est<=p.disp*1.02?"limite":"acima"));
-      ok.push({x:x, livres:livres, m2:m2, est:est, dv:est!=null&&C.n?(est-C.central)/C.central*100:null, cabe:cabe});
+      ok.push({x:x, livres:livres, m2:m2, pq:pq, est:est, parcial:parcial, dv:est!=null&&!parcial&&C.n?(est-C.central)/C.central*100:null, cabe:parcial?"":cabe});
     }
   });
   var ord={cabe:0,limite:1,acima:2,"":3};
@@ -5260,7 +5297,8 @@ function estCalc(){
   var tag={cabe:engPill("Cabe","ok"),limite:engPill("No limite","and"),acima:engPill("Acima","atr"),"":'<span style="color:var(--muted)">—</span>'};
   document.getElementById("estForn").innerHTML=ok.length?ok.map(function(l,i){
     return '<tr><td>'+(i+1)+'</td><td><b>'+engVal(l.x.f.empresa)+'</b>'+(l.x.nota==null?' <span class="badge s-ni">novo</span>':'')+'</td><td style="white-space:nowrap">'+engNotaTxt(l.x.nota)+'</td>'+
-      '<td class="num">'+(l.livres==null?"—":engNum(l.livres,1))+'</td><td class="num">'+(l.m2?engNum(l.m2,0):"—")+'</td><td class="num">'+(l.est?engMi(l.est):"—")+'</td>'+
+      '<td class="num">'+(l.livres==null?"—":engNum(l.livres,1))+'</td><td class="num">'+(l.pq?engNum(l.pq,0):"—")+' · '+(l.m2?engNum(l.m2,0):"—")+'</td>'+
+      '<td class="num">'+(l.est?engMi(l.est)+(l.parcial?' <span style="color:var(--muted);font-weight:400">(parcial)</span>':''):"—")+'</td>'+
       '<td class="num" style="color:'+(l.dv==null?"var(--muted)":l.dv>5?"var(--red)":l.dv<-5?"#2F6FB0":"var(--ink)")+'">'+(l.dv==null?"—":(l.dv>0?"+":"")+engNum(l.dv,1)+"%")+'</td><td>'+tag[l.cabe]+'</td></tr>'; }).join("")
     : '<tr><td colspan="8" style="color:var(--muted);padding:14px">Nenhum fornecedor atende aos critérios para '+engEsc(reg||"esta região")+'.</td></tr>';
   document.getElementById("estFora").innerHTML=fora.length?'<div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:6px">Fora da lista</div><div style="display:flex;flex-wrap:wrap;gap:6px">'+
@@ -5272,7 +5310,7 @@ function estProjeto(){
   var cp=COL.PROJETOS||{}, r=(DADOS.PROJETOS||[]).find(function(x){ return txt(G(x,cp.id))===id; });
   if(r){
     var pad=engCap1(G(r,cp.padrao)); if(["Standard","Plus","Premium"].indexOf(pad)>=0) document.getElementById("estPad").value=pad;
-    var q=+num(G(r,cp.qtdQuadras)); if(q>=2&&q<=6) document.getElementById("estQuad").value=String(q);
+    var q=+num(G(r,cp.qtdQuadras)); if(q>=1) document.getElementById("estQuad").value=String(q);
   }
   estCalc();
 }
@@ -5291,12 +5329,12 @@ function estProjeto(){
   document.getElementById("ocSalvar").addEventListener("click",engOcSalvar);
   document.getElementById("ocObra").addEventListener("change",engOcSugerirForn);
   /* simulador: botões segmentados e campos */
-  [["simQuad","quad"],["simPad","pad"],["simDesn","desn"]].forEach(function(p){
+  [["simPad","pad"],["simDesn","desn"],["simInf","inf"]].forEach(function(p){
     [].forEach.call(document.querySelectorAll("#"+p[0]+" button"),function(b){ b.addEventListener("click",function(){
       [].forEach.call(document.querySelectorAll("#"+p[0]+" button"),function(x){ x.classList.toggle("on",x===b); });
-      SIM[p[1]]=p[1]==="quad"?+b.dataset.v:b.dataset.v; if(ENG.carregado) simCalc(); }); });
+      SIM[p[1]]=b.dataset.v; if(ENG.carregado) simCalc(); }); });
   });
-  ["simDisp","simPiso","simUF","simLote"].forEach(function(id){ document.getElementById(id).addEventListener("input",function(){ if(ENG.carregado) simCalc(); }); });
+  ["simDisp","simQuad","simPiso","simUF","simLote"].forEach(function(id){ document.getElementById(id).addEventListener("input",function(){ if(ENG.carregado) simCalc(); }); });
   ["estPad","estQuad","estPiso","estUF","estArea","estDisp"].forEach(function(id){ document.getElementById(id).addEventListener("input",function(){ if(ENG.carregado) estCalc(); }); });
   document.getElementById("estProj").addEventListener("change",function(){ if(ENG.carregado) estProjeto(); });
   /* ↻ Atualizar também relê a engenharia, se ela já tiver sido aberta */
@@ -5307,7 +5345,342 @@ function estProjeto(){
     else if(document.getElementById("tab-simulador").classList.contains("on")) simAbrir();
   });
 })();
+
+/* ============ ENGENHARIA · EDIÇÃO (fornecedores, obras, orçamentos, pendências) ============
+   Grava nas tabelas eng_* (policies do 007_engenharia_edicao.sql).
+   A ficha do projeto ganha o bloco "Obra · Engenharia": o que for atualizado ali
+   (orçamento fechado, início da obra, fornecedores) é o mesmo dado que a aba Engenharia lê. */
+var ENG_FASES_OBRA=["Em orçamento","Orçamento fechado","Em execução","Fase final","Concluída","Cancelada"];
+/* a view v_eng_fornecedor_ocupacao só conta como obra ativa as fases "Em execução" e "Fase final" */
+function engObraAtiva(fase){ var k=KEY(fase); return k==="EM EXECUCAO"||k==="FASE FINAL"; }
+var ENG_ST_MARCO=["A fazer","Em andamento","Concluído","Atrasado"];
+
+/* ---- modal de edição (sobrepõe a ficha do projeto, no mesmo estilo dos modais do painel) ---- */
+(function(){
+  var ov=document.createElement("div");
+  ov.id="engEdOv";
+  ov.style.cssText="position:fixed;inset:0;background:rgba(15,30,36,.4);z-index:90;display:none;align-items:center;justify-content:center;padding:20px";
+  ov.innerHTML='<div style="background:#fff;border-radius:16px;width:min(880px,100%);max-height:90vh;overflow-y:auto;padding:24px;position:relative">'+
+    '<button id="engEdX" style="position:absolute;top:14px;right:16px;background:none;border:0;font-size:22px;color:var(--muted);cursor:pointer">×</button>'+
+    '<h2 id="engEdTit" style="margin:0 0 16px;font-size:18px;color:var(--accent)"></h2><div id="engEdBody"></div>'+
+    '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:16px"><button class="pjf-btn prim" id="engEdSalvar">Salvar</button>'+
+    '<button class="pjf-btn" id="engEdCancelar">Cancelar</button><span id="engEdMsg" style="font-size:13px"></span></div></div>';
+  document.body.appendChild(ov);
+  var fechar=function(){ ov.style.display="none"; };
+  document.getElementById("engEdX").onclick=fechar; document.getElementById("engEdCancelar").onclick=fechar;
+  ov.addEventListener("click",function(e){ if(e.target===ov) fechar(); });
+})();
+var ENG_ED={salvar:null};
+function engEdAbrir(tit,html,salvar){
+  document.getElementById("engEdTit").textContent=tit;
+  document.getElementById("engEdBody").innerHTML=html;
+  document.getElementById("engEdMsg").textContent="";
+  var b=document.getElementById("engEdSalvar"); b.disabled=false; b.textContent="Salvar";
+  b.onclick=async function(){
+    var msg=document.getElementById("engEdMsg"); b.disabled=true; b.textContent="Salvando…"; msg.textContent="";
+    try{ await salvar(); document.getElementById("engEdOv").style.display="none"; await engRecarregar(); }
+    catch(e){ msg.style.color="var(--red)"; msg.textContent="Não deu certo: "+(e&&e.message?e.message:e); }
+    finally{ b.disabled=false; b.textContent="Salvar"; }
+  };
+  document.getElementById("engEdOv").style.display="flex";
+}
+function engIn(id,v,tipo,extra){ return '<input type="'+(tipo||"text")+'" id="'+id+'" value="'+engEsc(v==null?"":v)+'" '+(extra||"")+'>'; }
+function engSel(id,ops,v,vazio){ return '<select id="'+id+'">'+(vazio!=null?'<option value="">'+engEsc(vazio)+'</option>':'')+
+  ops.map(function(o){ var val=Array.isArray(o)?o[0]:o, t=Array.isArray(o)?o[1]:o;
+    return '<option value="'+engEsc(val)+'"'+(String(val)===String(v==null?"":v)?" selected":"")+'>'+engEsc(t)+'</option>'; }).join("")+'</select>'; }
+function engFld(rot,html){ return '<div class="fld"><label>'+rot+'</label>'+html+'</div>'; }
+function engG(id){ var el=document.getElementById(id); return el?String(el.value).trim():""; }
+function engNumOuNulo(v){ if(v==null||v==="") return null; var n=Number(String(v).replace(",",".")); return isNaN(n)?null:n; }
+function engOk(r){ if(r&&r.error) throw new Error(r.error.message); return r?r.data:null; }
+/* relê tudo e redesenha o que estiver aberto (Engenharia, Simulador e o bloco da ficha) */
+async function engRecarregar(){
+  ENG.carregado=false;
+  await new Promise(function(res){ engGarantir(res); });
+  if(document.getElementById("tab-engenharia").classList.contains("on")) engRender();
+  if(document.getElementById("tab-simulador").classList.contains("on")) simRender();
+  if(document.getElementById("pjFichaOv").classList.contains("on") && ENG_FICHA.pid) engFichaObra(ENG_FICHA.pid);
+}
+function engUFs(){ return Object.keys(REF_MERCADO.ufRegiao).sort(); }
+function engProjetosOps(){
+  var cp=COL.PROJETOS||{};
+  return (DADOS.PROJETOS||[]).map(function(r){ return [txt(G(r,cp.id)), txt(G(r,cp.id))+" — "+txt(G(r,cp.nome))]; })
+    .filter(function(x){ return x[0]; }).sort(function(a,b){ return b[0].localeCompare(a[0],"pt",{numeric:true}); });
+}
+function engFasesObra(){ return uniq(ENG_FASES_OBRA.concat(ENG.d.obras.map(function(o){ return txt(o.fase); }))); }
+
+/* ================= FORNECEDOR ================= */
+function engEditarForn(id){
+  var f=id?ENG.d.forn.find(function(x){ return String(x.id)===String(id); }):{};
+  if(id&&!f) return;
+  var serv=engLista(f.servicos).map(function(s){ return KEY(s); });
+  var regs=id?ENG.d.fornReg.filter(function(x){ return String(x.fornecedor_id)===String(id); }):[];
+  var linhaReg=function(r,i){ return '<tr data-reg="'+(r.id||"")+'" data-i="'+i+'"><td>'+engSel("rgReg"+i,engRegioes(),r.regiao)+'</td>'+
+    '<td>'+engIn("rgCota"+i,r.max_obras,"number",'step="0.1" min="0" style="width:100px"')+'</td>'+
+    '<td>'+engIn("rgQd"+i,r.preco_quadra,"number",'step="1000" min="0" style="width:130px"')+'</td>'+
+    '<td>'+engIn("rgM2"+i,r.preco_m2_civil!=null?r.preco_m2_civil:r.preco_m2,"number",'step="10" min="0" style="width:120px"')+'</td>'+
+    '<td><label class="tkchk"><input type="checkbox" id="rgDel'+i+'"> remover</label></td></tr>'; };
+  var html=
+    '<div class="row2">'+engFld("Empresa",engIn("fnEmp",f.empresa))+engFld("Contato",engIn("fnCont",f.contato))+'</div>'+
+    '<div class="row2">'+engFld("Telefone",engIn("fnTel",f.telefone))+engFld("Obras executadas",engIn("fnExec",f.obras_executadas))+'</div>'+
+    '<div class="row2">'+engFld("Máximo de obras no total",engIn("fnMax",f.max_obras_total,"number",'step="1" min="0" placeholder="ex.: 4"'))+
+      engFld("Nota (1 a 5) <small style=\'font-weight:400\'>— usada enquanto não houver avaliações</small>",engIn("fnNota",f.nota,"number",'step="0.1" min="1" max="5"'))+'</div>'+
+    engFld("Serviços",'<div class="respbox">'+ENG_SERVICOS.map(function(s){ var on=serv.indexOf(KEY(s))>=0;
+      return '<label class="'+(on?"on":"")+'"><input type="checkbox" class="fnServ" value="'+s.toLowerCase()+'"'+(on?" checked":"")+'>'+s+'</label>'; }).join("")+'</div>')+
+    engFld("Observação",'<textarea id="fnObs">'+engEsc(f.observacao||"")+'</textarea>')+
+    '<div class="nvsec">Regiões atendidas · cota de obras e preço do m²</div>'+
+    '<div class="tkwrap"><table class="tktab"><thead><tr><th>Região</th><th>Cota (máx. obras)</th><th>R$ por quadra</th><th>R$/m² civil</th><th></th></tr></thead><tbody id="fnRegs">'+
+      regs.map(linhaReg).join("")+'</tbody></table></div>'+
+    '<button type="button" class="pjf-btn" id="fnAddReg" style="margin-top:8px">+ Região</button>'+
+    '<div class="hint">A soma das cotas regionais deve respeitar o máximo total (regra: até 4 obras no total, divididas entre as regiões). Obra ativa = fase Em execução ou Fase final.</div>';
+  engEdAbrir(id?"Editar fornecedor":"Novo fornecedor",html,async function(){
+    var emp=engG("fnEmp"); if(!emp) throw new Error("Informe a empresa.");
+    var servs=[].slice.call(document.querySelectorAll(".fnServ:checked")).map(function(c){ return c.value; });
+    var dados={empresa:emp, contato:engG("fnCont")||null, telefone:engG("fnTel")||null, obras_executadas:engG("fnExec")||null,
+      max_obras_total:engNumOuNulo(engG("fnMax")), nota:engNumOuNulo(engG("fnNota")), observacao:engG("fnObs")||null};
+    /* servicos pode ser text[] ou texto, conforme o banco: segue o formato que já existe */
+    var exemplo=ENG.d.forn.find(function(x){ return x.servicos!=null; });
+    var comoTexto=exemplo&&!Array.isArray(exemplo.servicos);
+    dados.servicos=comoTexto?servs.join(", "):servs;
+    var r=id? await sb.from("eng_fornecedores").update(dados).eq("id",id).select().single()
+             : await sb.from("eng_fornecedores").insert(dados).select().single();
+    if(r.error && !exemplo && /array|malformed/i.test(r.error.message)){   // banco sem exemplo: tenta como texto
+      dados.servicos=servs.join(", ");
+      r=id? await sb.from("eng_fornecedores").update(dados).eq("id",id).select().single()
+          : await sb.from("eng_fornecedores").insert(dados).select().single();
+    }
+    var fid=engOk(r).id;
+    var linhas=[].slice.call(document.querySelectorAll("#fnRegs tr"));
+    for(var k=0;k<linhas.length;k++){
+      var tr=linhas[k], i=tr.getAttribute("data-i"), rid=tr.getAttribute("data-reg");
+      var reg={fornecedor_id:fid, regiao:engG("rgReg"+i), max_obras:engNumOuNulo(engG("rgCota"+i)), preco_quadra:engNumOuNulo(engG("rgQd"+i)), preco_m2_civil:engNumOuNulo(engG("rgM2"+i))};
+      if(document.getElementById("rgDel"+i).checked){ if(rid) engOk(await sb.from("eng_fornecedor_regioes").delete().eq("id",rid)); continue; }
+      if(rid) engOk(await sb.from("eng_fornecedor_regioes").update(reg).eq("id",rid));
+      else engOk(await sb.from("eng_fornecedor_regioes").insert(reg));
+    }
+  });
+  var n=regs.length;
+  document.getElementById("fnAddReg").onclick=function(){
+    document.getElementById("fnRegs").insertAdjacentHTML("beforeend",linhaReg({},n++)); };
+  [].forEach.call(document.querySelectorAll("#engEdBody .respbox label"),function(l){
+    l.addEventListener("click",function(e){ e.preventDefault(); var cb=l.querySelector("input"); cb.checked=!cb.checked; l.classList.toggle("on",cb.checked); }); });
+}
+
+/* ================= OBRA ================= */
+var ENG_FICHA={pid:""};
+function engEditarObra(id,pref){
+  var o=id?engObra(id):Object.assign({},pref||{});
+  if(id&&!o) return;
+  var vincs=id?ENG.d.obraForn.filter(function(x){ return String(x.obra_id)===String(id); }):[];
+  var fornOps=ENG.d.forn.slice().sort(function(a,b){ return txt(a.empresa).localeCompare(txt(b.empresa),"pt"); }).map(function(f){ return [String(f.id),txt(f.empresa)]; });
+  var linhaF=function(v,i){ return '<tr data-of="'+(v.id||"")+'" data-i="'+i+'"><td>'+engSel("ofServ"+i,ENG_SERVICOS.map(function(s){ return [s.toLowerCase(),s]; }),txt(v.servico).toLowerCase())+'</td>'+
+    '<td>'+engSel("ofForn"+i,fornOps,v.fornecedor_id,"— escolha —")+'</td>'+
+    '<td>'+engIn("ofVal"+i,v.valor_orcado,"number",'step="1000" min="0" style="width:140px"')+'</td>'+
+    '<td><label class="tkchk"><input type="checkbox" id="ofCont'+i+'"'+(v.contratado?" checked":"")+'> fechado</label></td>'+
+    '<td><label class="tkchk"><input type="checkbox" id="ofDel'+i+'"> remover</label></td></tr>'; };
+  var ms=id?engMarcosDaObra(o):ENG.d.marcos.map(function(m){ return {m:m,x:null}; });
+  var stMarco=function(x){ var e=engEstadoMarco(x); return e===2?"Concluído":e===1?"Em andamento":e===-1?"Atrasado":(x&&x.status)||"A fazer"; };
+  var dIn=function(v){ return v?String(v).slice(0,10):""; };
+  var html=
+    '<div class="row2">'+engFld("Unidade",engIn("obUnid",o.unidade))+engFld("Projeto do painel (código FT)",engSel("obProj",engProjetosOps(),o.projeto_codigo,"— sem vínculo —"))+'</div>'+
+    '<div class="row2">'+engFld("Cidade",engIn("obCid",o.cidade))+engFld("UF",engSel("obUF",engUFs(),o.uf,"—"))+'</div>'+
+    '<div class="row2">'+engFld("Fase da obra",engSel("obFase",engFasesObra(),o.fase||"Em orçamento"))+engFld("Padrão",engSel("obPad",["Standard","Plus","Premium"],o.padrao,"— do projeto —"))+'</div>'+
+    '<div class="row2">'+engFld("Início da obra",engIn("obIni",dIn(o.data_inicio),"date"))+engFld("Previsão de inauguração",engIn("obPrev",dIn(o.previsao_inauguracao),"date"))+'</div>'+
+    '<div class="row2">'+engFld("Área construída (m²)",engIn("obArea",o.area_construida,"number",'min="0"'))+engFld("Valor gasto até agora (R$)",engIn("obGasto",o.valor_gasto,"number",'step="1000" min="0"'))+'</div>'+
+    '<div class="nvsec">Fornecedores da obra · orçamento por serviço</div>'+
+    '<div class="tkwrap"><table class="tktab"><thead><tr><th>Serviço</th><th>Fornecedor</th><th>Valor orçado (R$)</th><th></th><th></th></tr></thead><tbody id="obForns">'+
+      vincs.map(linhaF).join("")+'</tbody></table></div>'+
+    '<button type="button" class="pjf-btn" id="obAddForn" style="margin-top:8px">+ Fornecedor</button>'+
+    '<div class="nvsec">Marcos da obra</div>'+
+    '<div class="tkwrap"><table class="tktab"><thead><tr><th>Marco</th><th>Status</th><th>Início</th><th>Conclusão</th><th>Meta</th></tr></thead><tbody>'+
+      ms.map(function(p,i){ return '<tr data-mk="'+i+'" data-mx="'+(p.x&&p.x.id||"")+'" data-mc="'+engEsc(p.m.codigo||p.m.nome)+'"><td>'+engVal(p.m.nome||p.m.codigo)+'</td>'+
+        '<td>'+engSel("mkSt"+i,ENG_ST_MARCO,stMarco(p.x))+'</td><td>'+engIn("mkIni"+i,dIn(p.x&&p.x.data_inicio),"date")+'</td>'+
+        '<td>'+engIn("mkFim"+i,dIn(p.x&&p.x.data_real),"date")+'</td><td>'+(p.m.meta_dias!=null?p.m.meta_dias+" d":"—")+'</td></tr>'; }).join("")+
+    '</tbody></table></div>';
+  engEdAbrir(id?"Editar obra":"Nova obra",html,async function(){
+    var unid=engG("obUnid"); if(!unid) throw new Error("Informe a unidade.");
+    var uf=engG("obUF");
+    var dados={unidade:unid, projeto_codigo:engG("obProj")||null, cidade:engG("obCid")||null, uf:uf||null,
+      regiao:uf?engRegiaoDaUF(uf):(o.regiao||null), fase:engG("obFase")||null, padrao:engG("obPad")||null,
+      data_inicio:engG("obIni")||null, previsao_inauguracao:engG("obPrev")||null,
+      area_construida:engNumOuNulo(engG("obArea")), valor_gasto:engNumOuNulo(engG("obGasto"))};
+    var r=id? await sb.from("eng_obras").update(dados).eq("id",id).select().single()
+             : await sb.from("eng_obras").insert(dados).select().single();
+    var oid=engOk(r).id;
+    var trs=[].slice.call(document.querySelectorAll("#obForns tr"));
+    for(var k=0;k<trs.length;k++){
+      var tr=trs[k], i=tr.getAttribute("data-i"), vid=tr.getAttribute("data-of");
+      if(document.getElementById("ofDel"+i).checked){ if(vid) engOk(await sb.from("eng_obra_fornecedor").delete().eq("id",vid)); continue; }
+      var fn=engG("ofForn"+i); if(!fn) continue;
+      var v={obra_id:oid, fornecedor_id:+fn, servico:engG("ofServ"+i), valor_orcado:engNumOuNulo(engG("ofVal"+i)), contratado:document.getElementById("ofCont"+i).checked};
+      if(vid) engOk(await sb.from("eng_obra_fornecedor").update(v).eq("id",vid));
+      else engOk(await sb.from("eng_obra_fornecedor").insert(v));
+    }
+    var mks=[].slice.call(document.querySelectorAll("#engEdBody tr[data-mk]"));
+    for(var j=0;j<mks.length;j++){
+      var t=mks[j], q=t.getAttribute("data-mk"), mx=t.getAttribute("data-mx");
+      var mv={status:engG("mkSt"+q), data_inicio:engG("mkIni"+q)||null, data_real:engG("mkFim"+q)||null};
+      if(mx) engOk(await sb.from("eng_obra_marcos").update(mv).eq("id",mx));
+      else if(mv.status!=="A fazer"||mv.data_inicio||mv.data_real){ mv.obra_id=oid; mv.marco=t.getAttribute("data-mc"); engOk(await sb.from("eng_obra_marcos").insert(mv)); }
+    }
+  });
+  var n=vincs.length;
+  document.getElementById("obAddForn").onclick=function(){ document.getElementById("obForns").insertAdjacentHTML("beforeend",linhaF({},n++)); };
+}
+
+/* ================= ORÇAMENTO DO BANCO ================= */
+function engEditarOrc(id){
+  var o=id?ENG.d.orc.find(function(x){ return String(x.id)===String(id); }):{};
+  if(id&&!o) return;
+  var E=id?engEtapasDoOrc(o):{porEt:{},etapas:ENG.d.eap.map(function(e){ return {cod:txt(e.codigo),nome:txt(e.nome)}; })};
+  var fornOps=ENG.d.forn.map(function(f){ return [String(f.id),txt(f.empresa)]; }).sort(function(a,b){ return a[1].localeCompare(b[1],"pt"); });
+  var dIn=function(v){ return v?String(v).slice(0,10):""; };
+  var html=
+    '<div class="row2">'+engFld("Código",engIn("orCod",o.codigo,"text",'placeholder="ex.: ORC-031"'))+engFld("Origem",engSel("orOrig",uniq(["Fornecedor","Franqueadora","Estudo orçamentário"].concat(ENG.d.orc.map(function(x){ return txt(x.origem); }))),o.origem||"Fornecedor"))+'</div>'+
+    '<div class="row2">'+engFld("Fornecedor",engSel("orForn",fornOps,o.fornecedor_id,"—"))+engFld("Unidade",engIn("orUnid",o.unidade))+'</div>'+
+    '<div class="row2">'+engFld("Cidade",engIn("orCid",o.cidade))+engFld("UF",engSel("orUF",engUFs(),o.uf,"—"))+'</div>'+
+    '<div class="row2">'+engFld("Tipologia",engIn("orTipo",o.tipologia))+engFld("Padrão",engSel("orPad",["Standard","Plus","Premium"],o.padrao,"—"))+'</div>'+
+    '<div class="row2">'+engFld("Piso",engIn("orPiso",o.piso))+engFld("Quadras",engIn("orQuad",o.qtd_quadras,"number",'min="0" max="20"'))+'</div>'+
+    '<div class="row2">'+engFld("Área construída (m²)",engIn("orArea",o.area_construida,"number",'min="0"'))+engFld("Data-base",engIn("orBase",dIn(o.data_base),"date"))+'</div>'+
+    '<div class="row2">'+engFld("Total sem BDI (R$)",engIn("orSem",o.total_sem_bdi,"number",'step="100" min="0"'))+engFld("Total com BDI (R$)",engIn("orCom",o.total_com_bdi,"number",'step="100" min="0"'))+'</div>'+
+    engFld("Link do arquivo no Drive",engIn("orArq",o.arquivo_url,"url",'placeholder="https://drive.google.com/…"'))+
+    '<div class="nvsec">Valores por etapa (opcional — alimentam a composição do Simulador e o estudo por etapa)</div>'+
+    '<div class="tkwrap"><table class="tktab"><thead><tr><th>Etapa</th><th>Sem BDI (R$)</th><th>Com BDI (R$)</th></tr></thead><tbody>'+
+      E.etapas.map(function(e,i){ var x=E.porEt[KEY(e.cod)]||{};
+        return '<tr data-et="'+engEsc(e.cod)+'" data-i="'+i+'"><td>'+engEsc(e.cod+" · "+(e.nome||""))+'</td><td>'+engIn("etS"+i,x.total_sem_bdi,"number",'step="100" min="0" style="width:140px"')+'</td>'+
+          '<td>'+engIn("etC"+i,x.total_com_bdi,"number",'step="100" min="0" style="width:140px"')+'</td></tr>'; }).join("")+
+    '</tbody></table></div>';
+  engEdAbrir(id?"Editar orçamento":"Novo orçamento no banco",html,async function(){
+    var cod=engG("orCod"); if(!cod) throw new Error("Informe o código.");
+    var uf=engG("orUF");
+    var dados={codigo:cod, origem:engG("orOrig")||null, fornecedor_id:+engG("orForn")||null, unidade:engG("orUnid")||null,
+      cidade:engG("orCid")||null, uf:uf||null, regiao:uf?engRegiaoDaUF(uf):(o.regiao||null), tipologia:engG("orTipo")||null,
+      padrao:engG("orPad")||null, piso:engG("orPiso")||null, qtd_quadras:engNumOuNulo(engG("orQuad")),
+      area_construida:engNumOuNulo(engG("orArea")), data_base:engG("orBase")||null,
+      total_sem_bdi:engNumOuNulo(engG("orSem")), total_com_bdi:engNumOuNulo(engG("orCom")), arquivo_url:engG("orArq")||null};
+    var r=id? await sb.from("eng_orcamentos").update(dados).eq("id",id).select().single()
+             : await sb.from("eng_orcamentos").insert(dados).select().single();
+    var oid=engOk(r).id;
+    var atuais=engOk(await sb.from("eng_orcamento_etapas").select("id,etapa_codigo").eq("orcamento_id",oid))||[];
+    var trs=[].slice.call(document.querySelectorAll("#engEdBody tr[data-et]"));
+    for(var k=0;k<trs.length;k++){
+      var tr=trs[k], i=tr.getAttribute("data-i"), cod2=tr.getAttribute("data-et");
+      var s=engNumOuNulo(engG("etS"+i)), c=engNumOuNulo(engG("etC"+i));
+      var ex=atuais.find(function(a){ return KEY(a.etapa_codigo)===KEY(cod2); });
+      if(ex) engOk(await sb.from("eng_orcamento_etapas").update({total_sem_bdi:s,total_com_bdi:c}).eq("id",ex.id));
+      else if(s!=null||c!=null) engOk(await sb.from("eng_orcamento_etapas").insert({orcamento_id:oid,etapa_codigo:cod2,total_sem_bdi:s,total_com_bdi:c}));
+    }
+  });
+}
+
+/* ================= PENDÊNCIA ================= */
+function engNovaPend(obraId){
+  var obras=ENG.d.obras.slice().sort(function(a,b){ return txt(a.unidade).localeCompare(txt(b.unidade),"pt"); }).map(function(o){ return [String(o.id),engObraNome(o)]; });
+  engEdAbrir("Nova pendência",
+    engFld("Obra",engSel("pdObra",obras,obraId||""))+engFld("O que precisa ser feito",'<textarea id="pdDesc"></textarea>')+
+    '<div class="row2">'+engFld("Responsável",engSel("pdResp",["Engenharia","Arquitetura","Franqueado","Fornecedor"],"Engenharia"))+engFld("Prazo",engIn("pdPrazo","","date"))+'</div>',
+    async function(){
+      var d=engG("pdDesc"); if(!d) throw new Error("Descreva a pendência.");
+      engOk(await sb.from("eng_pendencias").insert({obra_id:+engG("pdObra")||null, descricao:d, responsavel:engG("pdResp"), prazo:engG("pdPrazo")||null}));
+    });
+}
+async function engConcluirPend(id){
+  if(!confirm("Marcar esta pendência como concluída?")) return;
+  var r=await sb.from("eng_pendencias").update({status:"Concluída"}).eq("id",id);
+  if(r.error){ alert("Não deu certo: "+r.error.message); return; }
+  await engRecarregar();
+}
+
+/* ================= BOTÕES NAS TELAS DA ENGENHARIA ================= */
+(function(){
+  var bt=function(txt2,fn,estilo){ var b=document.createElement("button"); b.type="button"; b.className="pjf-btn prim"; b.textContent=txt2;
+    if(estilo) b.style.cssText=estilo; b.onclick=function(){ engGarantir(fn); }; return b; };
+  var tbOrc=document.querySelector("#engOrc .tkbar"); if(tbOrc) tbOrc.appendChild(bt("+ Novo orçamento",function(){ engEditarOrc(null); }));
+  var tbForn=document.querySelector("#engForn .tkbar"); if(tbForn) tbForn.appendChild(bt("+ Novo fornecedor",function(){ engEditarForn(null); }));
+  var hObras=document.querySelector("#engObras .panel.col12 h3"); if(hObras) hObras.appendChild(bt("+ Nova obra",function(){ engEditarObra(null); },"float:right;font-size:12px;padding:6px 12px"));
+  var hPend=document.getElementById("engPend"); if(hPend&&hPend.previousElementSibling) hPend.previousElementSibling.appendChild(bt("+ Nova pendência",function(){ engNovaPend(); },"float:right;font-size:12px;padding:6px 12px"));
+})();
+
+/* obras clicáveis e pendências com "concluir" (depois do desenho original da aba) */
+var _engRenderObrasBase=engRenderObras;
+engRenderObras=function(){
+  _engRenderObrasBase();
+  [].forEach.call(document.querySelectorAll("#engObrasBody tr[data-engobra]"),function(tr){
+    tr.style.cursor="pointer"; tr.onclick=function(){ engEditarObra(tr.getAttribute("data-engobra")); }; });
+  var abertas=ENG.d.pend.filter(function(p){ return p.status!=="Concluída"; })
+    .sort(function(a,b){ return (engDia(a.prazo)||8.64e15)-(engDia(b.prazo)||8.64e15); });
+  [].forEach.call(document.querySelectorAll("#engPend .conf"),function(el,i){
+    var p=abertas[i]; if(!p) return;
+    var b=document.createElement("button"); b.className="tkbtn ok"; b.textContent="✓"; b.title="Concluir pendência";
+    b.onclick=function(){ engConcluirPend(p.id); }; el.appendChild(b); });
+};
+/* fichas de fornecedor e de orçamento ganham o botão Editar */
+var _engAbrirFornBase=engAbrirForn;
+engAbrirForn=function(id){ _engAbrirFornBase(id);
+  document.getElementById("pjFichaBody").insertAdjacentHTML("beforeend",'<div class="pjf-acts" style="margin-top:16px"><button class="pjf-btn prim" id="engBtEdForn">Editar fornecedor</button></div>');
+  document.getElementById("engBtEdForn").onclick=function(){ engEditarForn(id); }; };
+var _engAbrirOrcBase=engAbrirOrc;
+engAbrirOrc=function(id){ _engAbrirOrcBase(id);
+  var o=ENG.d.orc.find(function(x){ return String(x.id)===String(id); }); if(!o) return;
+  document.getElementById("pjFichaBody").insertAdjacentHTML("beforeend",'<div class="pjf-acts" style="margin-top:16px"><button class="pjf-btn prim" id="engBtEdOrc">Editar orçamento</button>'+
+    (o.arquivo_url?'<a class="pjf-btn" href="'+engEsc(o.arquivo_url)+'" target="_blank" rel="noopener" style="text-decoration:none">Abrir arquivo ↗</a>':'')+'</div>');
+  document.getElementById("engBtEdOrc").onclick=function(){ engEditarOrc(id); }; };
+
+/* ================= FICHA DO PROJETO · bloco "Obra · Engenharia" ================= */
+var _pjAbrirFichaBase=pjAbrirFicha;
+pjAbrirFicha=function(pid){
+  _pjAbrirFichaBase(pid);
+  ENG_FICHA.pid=pid;
+  if(!engPodeVer()) return;
+  var feed=[].slice.call(document.querySelectorAll("#pjFichaBody .pjf-sec")).find(function(s){ return s.textContent.indexOf("Feed do projeto")===0; });
+  var box=document.createElement("div"); box.id="engFichaObra";
+  box.innerHTML='<div class="pjf-sec">Obra · Engenharia</div><div class="tkvazio" style="padding:12px">Carregando…</div>';
+  if(feed) feed.parentNode.insertBefore(box,feed); else document.getElementById("pjFichaBody").appendChild(box);
+  engGarantir(function(){ engFichaObra(pid); });
+};
+function engFichaObra(pid){
+  var box=document.getElementById("engFichaObra"); if(!box||!ENG.carregado) return;
+  var o=ENG.d.obras.find(function(x){ return txt(x.projeto_codigo||x.projeto_id)===pid; });
+  if(!o){
+    box.innerHTML='<div class="pjf-sec">Obra · Engenharia</div><div style="font-size:13px;color:var(--muted);margin-bottom:8px">Este projeto ainda não tem obra cadastrada na engenharia.</div>'+
+      '<div class="pjf-acts"><button class="pjf-btn prim" id="engFoCriar">Cadastrar obra na engenharia</button>'+
+      '<button class="pjf-btn" id="engFoVinc">Vincular a uma obra existente</button></div>';
+    var cp=COL.PROJETOS||{}, r=(DADOS.PROJETOS||[]).find(function(x){ return txt(G(x,cp.id))===pid; });
+    document.getElementById("engFoCriar").onclick=function(){
+      engEditarObra(null,{unidade:r?txt(G(r,cp.nome)):"", projeto_codigo:pid, padrao:r?engCap1(G(r,cp.padrao)):"", fase:"Em orçamento"}); };
+    document.getElementById("engFoVinc").onclick=function(){
+      var livres=ENG.d.obras.filter(function(x){ return !x.projeto_codigo; }).map(function(x){ return [String(x.id),engObraNome(x)]; });
+      engEdAbrir("Vincular obra ao projeto "+pid, engFld("Obra da engenharia sem vínculo",engSel("vbObra",livres,"","— escolha —")), async function(){
+        var oid=engG("vbObra"); if(!oid) throw new Error("Escolha a obra.");
+        engOk(await sb.from("eng_obras").update({projeto_codigo:pid}).eq("id",oid)); }); };
+    return;
+  }
+  var s=engSituacaoObra(o);
+  var vs=ENG.d.obraForn.filter(function(x){ return String(x.obra_id)===String(o.id); });
+  var orc=vs.reduce(function(t,x){ return t+(Number(x.valor_orcado)||0); },0);
+  var fornTxt=vs.length?vs.map(function(x){ return engCap1(x.servico)+": "+engFornNome(x.fornecedor_id)+(x.valor_orcado?" · "+engMoeda(x.valor_orcado):"")+(x.contratado?" ✓":""); }).join(" | "):"";
+  var fase=txt(o.fase);
+  box.innerHTML='<div class="pjf-sec">Obra · Engenharia</div>'+
+    engCelulas([["Fase da obra",fase||"—"],["Início da obra",o.data_inicio?d2br(o.data_inicio):"—"],
+      ["Previsão de inauguração",o.previsao_inauguracao?d2br(o.previsao_inauguracao):"—"],
+      ["Marco atual",s.atual?txt(s.atual.m.nome||s.atual.m.codigo)+(s.dias!=null?" · "+s.dias+" d":""):"—"],
+      ["Orçado (fornecedores)",orc?engMoeda(orc):"—"],["Gasto",engMoeda(o.valor_gasto)]])+
+    (fornTxt?'<div style="font-size:12.5px;margin:-6px 0 10px"><b>Fornecedores:</b> '+engEsc(fornTxt)+'</div>':'<div style="font-size:12.5px;color:var(--muted);margin:-6px 0 10px">Nenhum fornecedor definido.</div>')+
+    '<div class="pjf-acts">'+
+      (KEY(fase)!=="ORCAMENTO FECHADO"&&!engObraAtiva(fase)&&KEY(fase).indexOf("CONCLU")<0?'<button class="pjf-btn" id="engFoFechado">Orçamento fechado</button>':'')+
+      (!engObraAtiva(fase)&&KEY(fase).indexOf("CONCLU")<0?'<button class="pjf-btn" id="engFoIniciar">Iniciar obra hoje</button>':'')+
+      '<button class="pjf-btn prim" id="engFoEditar">Editar obra</button></div>';
+  var acao=async function(dados,b){ b.disabled=true;
+    var r=await sb.from("eng_obras").update(dados).eq("id",o.id);
+    if(r.error){ b.disabled=false; alert("Não deu certo: "+r.error.message); return; }
+    await engRecarregar(); };
+  var bf=document.getElementById("engFoFechado"); if(bf) bf.onclick=function(){
+    if(!vs.length && !confirm("Nenhum fornecedor definido para esta obra. Marcar o orçamento como fechado mesmo assim?")) return;
+    acao({fase:"Orçamento fechado"},bf); };
+  var bi=document.getElementById("engFoIniciar"); if(bi) bi.onclick=function(){
+    if(!confirm("Marcar a obra como iniciada hoje? Ela passa para a fase Em execução e ocupa vaga dos fornecedores.")) return;
+    acao({fase:"Em execução", data_inicio:o.data_inicio||hojeISO()},bi); };
+  document.getElementById("engFoEditar").onclick=function(){ engEditarObra(o.id); };
+}
 </script>
 </body>
 </html>
-

@@ -537,10 +537,15 @@ ul.prev .muted{color:var(--muted);font-size:11px}
   body{background:#fff}
 }
 /* estudo orçamentário: planilha no formato do INVESTIMENTO INICIAL do BP */
-.estPl{font-size:11.5px}.estPl th,.estPl td{padding:4px 6px;vertical-align:top}.estPl td.num,.estPl th.num{text-align:right;white-space:nowrap}
-.estPl td:nth-child(4){min-width:280px}.estPl .estEt td{background:var(--line);font-weight:600}.estPl .estSub td{color:var(--muted)}
+#estDoc.rlfolha{max-width:none;padding:18px 16px}
+.estPl{font-size:10.5px;table-layout:auto}.estPl thead th,.estPl tbody td{padding:4px 4px;vertical-align:top}.estPl thead th{white-space:normal;font-size:9.5px;letter-spacing:0;line-height:1.25}
+.estPl td.num{text-align:right;white-space:nowrap}.estPl th.num{text-align:right}
+.estPl td:nth-child(4){min-width:160px}.estPl .estTot td:nth-child(4){min-width:0}.estPl td:nth-child(2){font-size:8.5px;white-space:nowrap}.estPl td:nth-child(3){font-size:8.5px;word-break:break-word}.estPl .estEt td{background:var(--line);font-weight:600}.estPl .estSub td{color:var(--muted)}
 .estPl .estZero td{color:var(--muted)}.estPl .estTot td{font-weight:700;border-top:2px solid var(--line)}
-.estPl .estCmp,.estPl .estCmpH{background:rgba(232,176,60,.10)}.estPl .estCin{width:92px;padding:3px 5px;font-size:11.5px;text-align:right}
+.estPl .estCmp,.estPl .estCmpH{background:rgba(232,176,60,.10)}.estPl .estCin{width:60px;padding:2px 4px;font-size:10.5px;text-align:right}
+@media(max-width:760px){.estPl thead{display:table-header-group}.estPl tbody tr{display:table-row;padding:0}.estPl tbody td{display:table-cell;border-top:1px solid var(--line2);padding:4px}}
+.simAviso{display:flex;gap:10px;align-items:center;background:#FBF0DA;border:1px solid #E8B03C;color:#6B4A0A;border-radius:10px;padding:10px 14px;font-size:13.5px;font-weight:700;margin:0 0 14px}
+.simAviso .ico{flex:none;width:22px;height:22px;border-radius:50%;background:#E8B03C;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800}
 .estCab{width:100%;font-size:12px;margin:0 0 10px;border-collapse:collapse}.estCab th{text-align:left;width:110px;color:var(--muted);font-weight:600;padding:3px 6px}.estCab td{padding:3px 6px;border-bottom:1px solid var(--line)}
 </style>
 </head>
@@ -903,6 +908,7 @@ ul.prev .muted{color:var(--muted);font-size:11px}
       <button type="button" data-sim="est">Estudo orçamentário</button>
     </div>
     <div style="margin:-6px 0 12px"><button type="button" class="pjf-btn" id="simParamBt">⚙ Parâmetros da base</button></div>
+    <div class="simAviso"><span class="ico">!</span><span>Este é um simulador. Valores podem sofrer alterações.</span></div>
     <div id="simMsg" class="banner"></div>
     <div id="simCarreg" class="tkvazio" style="display:none">Carregando a base orçamentária…</div>
 
@@ -5687,7 +5693,7 @@ function estDocHTML(R,conclusao,modo){
       (p.inf?' · quadra infantil coberta':'')+' · padrão '+engEsc(p.pad)+' ('+ENG_PADROES[KEY(p.pad)].toLowerCase()+') · área construída '+engNum(R.c.area,0)+' m²'+
       ' · lote '+engNum(R.c.lote,0)+' m² ('+engNum(R.c.pct,0)+'% a adequar)'+(p.desn?' · desnível acentuado de '+engNum(R.c.decl,1)+'%':' · terreno sem desnível acentuado')+'</td></tr>'+
     '</tbody></table>';
-  var head='<thead><tr><th colspan="10">PLANILHA ORÇAMENTÁRIA — BASE: BP 09_2026 (INVESTIMENTO INICIAL 2026) · SINAPI/SETOP/SUDECAP MG 07/2025 corrigidos para '+engEsc(p.uf)+' · itens calibrados pelos orçamentos de fornecedores (SP 07/2026)</th>'+
+  var head='<thead><tr><th colspan="10">PLANILHA ORÇAMENTÁRIA</th>'+
     '<th colspan="3" class="estCmpH">COMPARATIVO — ORÇAMENTO DO FORNECEDOR</th></tr>'+
     '<tr><th>ITEM</th><th>FONTE</th><th>CÓDIGO</th><th>DESCRIÇÃO</th><th>UND</th><th class="num">QUANT.</th><th class="num">VALOR UNIT.</th><th class="num">VALOR UNIT. C/ BDI</th><th class="num">TOTAL SEM BDI</th><th class="num">TOTAL C/ BDI</th>'+
     '<th class="num estCmpH">QUANT.</th><th class="num estCmpH">TOTAL (R$)</th><th class="num estCmpH">DIFERENÇA (R$)</th></tr></thead>';
@@ -5717,7 +5723,9 @@ function estDocHTML(R,conclusao,modo){
   var refs='<table class="tktab"><thead><tr><th>Fornecedor</th><th>Obra</th><th>Data</th><th>Escopo</th><th>Valor</th></tr></thead><tbody>'+
     SIM_REF_FORN.map(function(x){ return '<tr><td>'+engEsc(x.f)+'</td><td>'+engEsc(x.o)+'</td><td>'+engMesTxt(x.d)+'</td><td>'+engEsc(x.e)+'</td><td>'+engMoeda(x.v)+'</td></tr>'; }).join("")+'</tbody></table>';
   return '<div class="rl-cab"><div><h1>'+engEsc(titulo)+'</h1><div class="sub">Do For You · Estudo orçamentário preliminar</div></div><div class="per">'+hojeTxt+'</div></div>'+
-    cab+'<div class="tkwrap"><table class="tktab estPl">'+head+'<tbody>'+corpo+tot+'</tbody></table></div>'+
+    '<div class="simAviso"><span class="ico">!</span><span>Este é um simulador. Valores podem sofrer alterações.</span></div>'+
+    cab+'<div style="font-size:11px;color:var(--muted);margin:0 0 6px">Base: BP 09_2026 (INVESTIMENTO INICIAL 2026) · SINAPI/SETOP/SUDECAP MG 07/2025 corrigidos para '+engEsc(p.uf)+' · itens CALIBRADO pelos orçamentos de fornecedores (SP 07/2026)</div>'+
+    '<div class="tkwrap"><table class="tktab estPl">'+head+'<tbody>'+corpo+tot+'</tbody></table></div>'+
     '<div class="rl-sec"><h2>RESUMO POR ETAPA</h2>'+resumo+'</div>'+
     '<div class="rl-sec"><h2>OBSERVAÇÕES</h2><div style="font-size:12.5px;line-height:1.6">'+
       '<p><b>1. BDI:</b> adotado BDI de '+bdiTxt+' sobre o custo direto (despesas indiretas, tributos, seguros, mobilização e margem da executora). Não há BDI sobre o container, os projetos e os acessórios e equipamentos, que são adquiridos diretamente; nem sobre preços de fornecedor do banco, que já incluem esses custos.</p>'+
@@ -5755,6 +5763,7 @@ function estDocCompleto(){
     'table{width:100%;border-collapse:collapse;font-size:8pt}th,td{border:1px solid #C9D2D5;padding:3px 4px;text-align:left;vertical-align:top}th{background:#F2F4F6;font-size:7.5pt}'+
     '.num{text-align:right;white-space:nowrap}.estEt td{background:#E6EEF0;font-weight:bold}.estSub td{background:#F6F8F9}.estTot td{background:#F2F4F6;font-weight:bold}.estFim td{background:#15616D;color:#fff}.estCmp,.estCmpH{background:#FFF8E6}'+
     '.estCab{margin-bottom:8px}.estCab th{width:12%;background:#fff;border:none;font-size:8pt}.estCab td{border:none;border-bottom:1px solid #DDE3E5}'+
+    '.simAviso{background:#FBF0DA;border:1px solid #E8B03C;color:#6B4A0A;padding:6px 10px;font-weight:bold;font-size:10pt;margin:0 0 8px}.simAviso .ico{display:none}'+
     '.rl-sec{page-break-inside:avoid}.rl-foot{display:none}.rodape{margin-top:20px;border-top:1px solid #DDE3E5;padding-top:6px;font-size:8pt;color:#7A858C;text-align:center}@page{size:A4 landscape;margin:10mm}';
   return '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Estudo Orçamentário - Fast Tennis '+engEsc(p.unid||"")+'</title><style>'+css+'</style></head><body>'+
     '<div class="timbre">'+EST_TIMBRE.empresa+'</div><div class="cidade">'+EST_TIMBRE.cidade+'</div>'+corpo+
@@ -5779,6 +5788,7 @@ function estXLSX(){
   var p=estParams(), R=simCalcular(p), r2=function(v){ return Math.round(v*100)/100; }, Z="#,##0.00";
   var rows=[], f=function(expr,z){ return {t:"n", f:expr, z:z||Z}; }, n=function(v,z){ return {t:"n", v:r2(v), z:z||Z}; };
   rows.push(["","","","ESTUDO ORÇAMENTÁRIO - FAST TENNIS "+(p.unid||"").toUpperCase()]);
+  rows.push(["","","","ATENÇÃO: Este é um simulador. Valores podem sofrer alterações."]);
   rows.push(["","","","FRANQUEADO: "+(p.franq||"")]);
   rows.push(["","","","ENDEREÇO: "+(p.end||"")+(p.uf?" — "+p.uf:"")]);
   rows.push(["","","","DATA: "+fmtdA(hoje)+"     INAUGURAÇÃO:"]);
@@ -5813,7 +5823,7 @@ function estXLSX(){
   SIM_REF_FORN.forEach(function(x){ rows.push(["","",engMesTxt(x.d),x.f+" — "+x.o+": "+x.e,"","","","","",n(x.v)]); });
   var ws=XLSX.utils.aoa_to_sheet(rows);
   ws["!cols"]=[{wch:8},{wch:11},{wch:16},{wch:78},{wch:6},{wch:10},{wch:12},{wch:14},{wch:14},{wch:14},{wch:10},{wch:14},{wch:14}];
-  ws["!merges"]=[{s:{r:6,c:10},e:{r:6,c:12}}];
+  ws["!merges"]=[{s:{r:7,c:10},e:{r:7,c:12}}];
   var wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,"INVESTIMENTO INICIAL");
   XLSX.writeFile(wb,estNomeArq("Estudo Orcamentario",".xlsx"));
 }

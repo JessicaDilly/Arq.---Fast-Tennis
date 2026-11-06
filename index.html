@@ -4720,7 +4720,9 @@ function engRenderObras(){
       .reduce(function(t,x){ return t+(Number(x.valor_orcado)||0); },0);
     var pad=engObraPadrao(o);
     return '<tr data-engobra="'+engEsc(o.id)+'"><td class="tkpid" style="white-space:nowrap">'+engVal(o.unidade)+(ft?' <span class="badge s-ok" title="Projeto do painel">'+engEsc(ft)+'</span>':'')+
-        '<div style="font-weight:400;color:var(--muted);font-size:11.5px">'+engEsc([o.cidade,o.uf].filter(Boolean).join("/"))+'</div></td>'+
+        '<div style="font-weight:400;color:var(--muted);font-size:11.5px">'+engEsc([o.cidade,o.uf].filter(Boolean).join("/"))+'</div>'+
+        ((o.analista||o.franqueado_contato)?'<div style="font-weight:400;color:var(--muted);font-size:11.5px">'+engEsc([o.analista?"Analista: "+o.analista:"",o.franqueado_contato?"Franq.: "+o.franqueado_contato+(o.franqueado_telefone?" "+o.franqueado_telefone:""):""].filter(Boolean).join(" · "))+'</div>':'')+
+        (o.obs_operacional?'<div style="font-weight:400;color:var(--muted);font-size:11.5px;white-space:normal;max-width:260px" title="Observações operacionais">'+engEsc(o.obs_operacional)+'</div>':'')+'</td>'+
       '<td title="'+engEsc(ENG_PADROES[KEY(pad)]||"")+'">'+engVal(pad)+'</td><td>'+engVal(engObraForns(o).join(", "))+'</td>'+
       s.ms.map(function(p){ var e=engEstadoMarco(p.x);
         return '<td style="text-align:center"><span title="'+rot[e]+(p.x&&p.x.data_real?" · "+d2br(p.x.data_real):"")+'" style="display:inline-block;width:13px;height:13px;border-radius:50%;background:'+cor[e]+';border:1.5px solid '+(e===0?HEX.gray:cor[e])+'"></span></td>'; }).join("")+
@@ -5102,7 +5104,8 @@ function engRenderForn(){
   var body=document.getElementById("engFornBody");
   body.innerHTML=L.map(function(x){
     var f=x.f, t=x.tot, pc=t.max_obras_total?Math.min(100,Math.round((Number(t.obras_ativas_total)||0)/Number(t.max_obras_total)*100)):0;
-    return '<tr data-engforn="'+engEsc(f.id)+'" style="cursor:pointer"><td><b>'+engVal(f.empresa)+'</b>'+(f.contato?'<div style="font-weight:400;color:var(--muted);font-size:11.5px">'+engEsc(f.contato)+(f.telefone?" · "+engEsc(f.telefone):"")+'</div>':'')+'</td>'+
+    return '<tr data-engforn="'+engEsc(f.id)+'" style="cursor:pointer"><td><b>'+engVal(f.empresa)+'</b>'+
+      (f.codigo?' <span class="badge s-ni">'+engEsc(f.codigo)+'</span>':'')+(f.homologado?' <span class="badge s-ok">Homologado</span>':'')+(f.contato?'<div style="font-weight:400;color:var(--muted);font-size:11.5px">'+engEsc(f.contato)+(f.telefone?" · "+engEsc(f.telefone):"")+'</div>':'')+'</td>'+
       '<td>'+engVal(x.serv.join(", "))+'</td><td>'+engVal(x.reg.join(", "))+'</td>'+
       '<td style="min-width:110px">'+engOcupTxt(t)+(t.max_obras_total?'<div class="prog"><div class="bar"><div class="fill" style="width:'+pc+'%;background:'+(pc>=100?HEX.amber:HEX.accent2)+'"></div></div></div>':'')+'</td>'+
       '<td class="num">'+engSlots(t.slots_livres_total,t.max_obras_total)+'</td><td style="white-space:nowrap">'+engNotaTxt(x.nota)+'</td>'+
@@ -5143,8 +5146,10 @@ function engAbrirForn(id){
   document.getElementById("pjFichaBody").innerHTML=
     '<div class="pjf-head"><span class="id">'+engVal(f.codigo||"Fornecedor")+'</span>'+engSituacaoForn(x)[0]+'</div>'+
     '<h2 class="pjf-nome">'+engVal(f.empresa)+' <span style="font-size:15px;font-weight:600">'+engNotaTxt(x.nota)+'</span></h2>'+
-    engCelulas([["Serviços",x.serv.join(", ")],["Telefone",f.telefone],["Contato",f.contato],["Obras executadas",f.obras_executadas],
+    engCelulas([["Serviços",x.serv.join(", ")],["Ramo de atuação",f.ramo],["Homologado formal",f.homologado==null?null:(f.homologado?"Sim":"Não")],
+      ["Telefone",f.telefone],["Contato",f.contato],["Obras na rede",f.obras_executadas],
       ["Obras ativas (total)",engOcupTxt(t),1],["Slots livres (total)",engSlots(t.slots_livres_total,t.max_obras_total),1]])+
+    (f.observacao?'<div class="pjf-sec">Histórico / observações</div><div style="font-size:13px;white-space:pre-wrap">'+engEsc(f.observacao)+'</div>':'')+
     '<div class="pjf-sec">Capacidade por região</div>'+
     '<div class="tkwrap"><table class="tktab"><thead><tr><th>Região</th><th>Obras ativas</th><th>Cota (máx. obras)</th><th>Vagas livres na região</th><th>R$/quadra</th><th>R$/m² civil</th></tr></thead><tbody>'+
     (linhas.length ? linhas.map(function(r){
@@ -5237,7 +5242,8 @@ var SIM_REF_QUADRA=[
 var SIM_REF_CONT=[{f:"RF Leasing", o:"Curitiba/PR", v:94900}, {f:"Conbrazil", o:"Ribeirão Preto/SP", v:93900}];
 function simMediana(a){ return engQuartil(a.map(function(x){ return x.v; }),.5); }
 function simRefTxt(a,fmt){ return a.map(function(x){ return x.f+" "+x.o+": "+fmt(x.v); }).join("; "); }
-var SIM_BP_OBRA=410000;   /* BP 09_2026 › aba BP: "Custo Obra inicial" */
+var SIM_BP_OBRA=410000;
+var SIM_BDI_CALIB=0.25;   /* BDI com que os valores CALIBRADO (custo direto) foram derivados dos preços finais dos fornecedores */   /* BP 09_2026 › aba BP: "Custo Obra inicial" */
 
 function simEditarParametros(){
   var fx=simLoteFaixas(), n=fx.length;
@@ -5249,7 +5255,7 @@ function simEditarParametros(){
     '<button type="button" class="pjf-btn" id="fxAdd" style="margin-top:8px">+ Faixa</button>'+
     '<div class="hint">Deixe "até" vazio na última faixa (vale para lotes maiores). Sem faixas, o simulador considera 100% do lote.</div>'+
     '<div class="nvsec">Valores gerais</div>'+
-    '<div class="row2">'+engFld("BDI (%) — não incide sobre container, projetos e acessórios",engIn("prBdi",Math.round(simPd("bdi",0.25)*1000)/10,"number",'step="0.5" min="0"'))+
+    '<div class="row2">'+engFld("BDI (%) — não incide sobre container, projetos e acessórios",engIn("prBdi",Math.round(simPd("bdi_estudo",0.15)*1000)/10,"number",'step="0.5" min="0"'))+
       engFld("Cobertura metálica (R$/m², preço final)",engIn("prCob",num2("cobertura_m2",Math.round(simMediana(SIM_REF_COB))),"number"))+'</div>'+
     '<div class="row2">'+engFld("Container 20 pés (R$)",engIn("prC20",num2("container_20",71000),"number"))+engFld("Container 40 pés (R$)",engIn("prC40",num2("container_40",Math.round(simMediana(SIM_REF_CONT))),"number"))+'</div>'+
     '<div class="row2">'+engFld("Frete do container (R$)",engIn("prFrete",num2("frete_container",6000),"number"))+engFld("Área padrão Premium (m²)",engIn("prParea",num2("edif_premium_area",117),"number"))+'</div>'+
@@ -5262,7 +5268,7 @@ function simEditarParametros(){
         faixas.push({ate:engNumOuNulo(engG("fxAte"+i)), pct:pct}); });
       if(faixas.filter(function(x){ return x.ate==null; }).length>1) throw new Error("Só a última faixa pode ficar sem limite.");
       var bdi=engNumOuNulo(engG("prBdi"));
-      var linhas=[{chave:"lote_faixas",valor:null,texto:JSON.stringify(faixas)},{chave:"bdi",valor:bdi==null?null:bdi/100},
+      var linhas=[{chave:"lote_faixas",valor:null,texto:JSON.stringify(faixas)},{chave:"bdi_estudo",valor:bdi==null?null:bdi/100},
         {chave:"cobertura_m2",valor:engNumOuNulo(engG("prCob"))},{chave:"container_20",valor:engNumOuNulo(engG("prC20"))},
         {chave:"container_40",valor:engNumOuNulo(engG("prC40"))},{chave:"frete_container",valor:engNumOuNulo(engG("prFrete"))},
         {chave:"edif_premium_m2_min",valor:engNumOuNulo(engG("prPmin"))},{chave:"edif_premium_m2_max",valor:engNumOuNulo(engG("prPmax"))},
@@ -5368,7 +5374,7 @@ function simCatalogo(c){
     it("CALIBRADO","PRÓPRIO","ILUMINAÇÃO ESPORTIVA: POSTES DE 7 A 8 M, CRUZETAS, 16 REFLETORES LED 300-400 W, CABEAMENTO E QUADRO DE ACIONAMENTO","CJ",nQ,15200,"forn","BP R$ 8,1 mil (materiais); Max Quadra R$ 14,5 mil; Sport Piso R$ 19,4 mil; RA Poços R$ 28,5 mil por quadra")
   ],{quadra:true, ref:"Quadra completa nos fornecedores: mediana "+engMoeda(simMediana(SIM_REF_QUADRA))+" por quadra ("+simRefTxt(SIM_REF_QUADRA,engMoeda)+")"});
   sec("COBERTURA DE QUADRA",true,[
-    c.nCob?it("CALIBRADO","SETOP","ESTRUTURA METÁLICA (PILARES, TESOURAS EM ARCO, TERÇAS E CONTRAVENTAMENTO) COM TELHA METÁLICA GALVANIZADA TRAPEZOIDAL — 18 × 36 M POR QUADRA","M2",c.cobM2,cobFinal/(1+c.bdi),"forn",
+    c.nCob?it("CALIBRADO","SETOP","ESTRUTURA METÁLICA (PILARES, TESOURAS EM ARCO, TERÇAS E CONTRAVENTAMENTO) COM TELHA METÁLICA GALVANIZADA TRAPEZOIDAL — 18 × 36 M POR QUADRA","M2",c.cobM2,cobFinal/(1+SIM_BDI_CALIB),"forn",
       "R$ "+engNum(cobFinal,0)+"/m² final = mediana dos orçamentos de cobertura metálica ("+simRefTxt(SIM_REF_COB,function(v){ return "R$ "+engNum(v,0)+"/m²"; })+"); BP/SETOP R$ 334,15/m² sem BDI"):null,
     c.nCob?it("CALIBRADO","SETOP","CALHAS, RUFOS E CONDUTORES PLUVIAIS DA COBERTURA","M",72*c.nCob,95,"forn","SETOP R$ 89,11/m² de calha"):null
   ],{so:"quando houver"});
@@ -5395,7 +5401,7 @@ function simCatalogo(c){
     it("CALIBRADO","SETOP","PISO EM CONCRETO ARMADO DESEMPENADO (TELA SOLDADA E JUNTAS) — ÁREA DE CONVIVÊNCIA, RAMPAS, ACESSOS E ESTACIONAMENTO","M2",c.pisoExt,160,"forn","R2A R$ 200/m²; RA R$ 133/m²")
   ]);
   if(c.aCob>0) sec("TELHADO — ÁREA COBERTA DE CONVIVÊNCIA",true,[
-    it("CALIBRADO","SETOP","ESTRUTURA METÁLICA E COBERTURA EM TELHA METÁLICA GALVANIZADA TRAPEZOIDAL","M2",c.aCob,cobFinal/(1+c.bdi),"forn","mesma referência da cobertura metálica: R$ "+engNum(cobFinal,0)+"/m² final (mediana dos fornecedores); BP R$ 434/m² de telha"),
+    it("CALIBRADO","SETOP","ESTRUTURA METÁLICA E COBERTURA EM TELHA METÁLICA GALVANIZADA TRAPEZOIDAL","M2",c.aCob,cobFinal/(1+SIM_BDI_CALIB),"forn","mesma referência da cobertura metálica: R$ "+engNum(cobFinal,0)+"/m² final (mediana dos fornecedores); BP R$ 434/m² de telha"),
     it("CALIBRADO","-","FORRO DE GESSO ACARTONADO (DRYWALL) NA ÁREA COBERTA","M2",c.aCob,104,"forn","R2A R$ 130/m²"),
     it("SETOP","-","CALHA, RUFO/CONTRARRUFO E CHAPIM EM CHAPA GALVANIZADA, ESP. 0,65MM","M",40,80,"forn","SETOP R$ 89,11/m²; R2A R$ 100/m")
   ]);
@@ -5510,11 +5516,12 @@ function simCatalogo(c){
 
 /* ---- motor de cálculo (usado pelo simulador, pelos ajustes e pelo estudo) ---- */
 function simCalcular(p){
-  var reg=engRegiaoDaUF(p.uf), bdi=simPd("bdi",0.25);
+  var reg=engRegiaoDaUF(p.uf), bdi=simPd("bdi_estudo",0.15);
   var fBP=corrigirValor(1,{dataBase:"2025-07", ufBase:"MG", ufObra:p.uf});
   var fFN=corrigirValor(1,{dataBase:"2026-07", ufBase:"SP", ufObra:p.uf});
   var fIncc=fatorINCC("2026-07");
-  var fat={bp:fBP, forn:fFN, incc:fIncc, fixo:1};
+  /* itens calibrados: o preço final dos fornecedores se mantém qualquer que seja o BDI adotado */
+  var fat={bp:fBP, forn:fFN*(1+SIM_BDI_CALIB)/(1+bdi), incc:fIncc, fixo:1};
   var nQ=Math.max(1,p.quad), cont=p.pad!=="Premium";
   var lote=p.lote>0?p.lote:simPd("base_lote_m2",3390), pct=simLotePct(lote), aAdeq=lote*pct/100;
   var Ll=Math.sqrt(lote*1.6), Lw=Math.sqrt(lote/1.6);
@@ -5956,8 +5963,10 @@ function engEditarForn(id){
     '<td>'+engIn("rgM2"+i,r.preco_m2_civil!=null?r.preco_m2_civil:r.preco_m2,"number",'step="10" min="0" style="width:120px"')+'</td>'+
     '<td><label class="tkchk"><input type="checkbox" id="rgDel'+i+'"> remover</label></td></tr>'; };
   var html=
-    '<div class="row2">'+engFld("Empresa",engIn("fnEmp",f.empresa))+engFld("Contato",engIn("fnCont",f.contato))+'</div>'+
-    '<div class="row2">'+engFld("Telefone",engIn("fnTel",f.telefone))+engFld("Obras executadas",engIn("fnExec",f.obras_executadas))+'</div>'+
+    '<div class="row2">'+engFld("Empresa",engIn("fnEmp",f.empresa))+engFld("Código",engIn("fnCod",f.codigo,"text",'placeholder="ex.: FOR034"'))+'</div>'+
+    '<div class="row2">'+engFld("Contato",engIn("fnCont",f.contato))+engFld("Telefone",engIn("fnTel",f.telefone))+'</div>'+
+    '<div class="row2">'+engFld("Ramo de atuação",engIn("fnRamo",f.ramo,"text",'placeholder="ex.: Obra Civil e Quadra"'))+engFld("Obras na rede",engIn("fnExec",f.obras_executadas))+'</div>'+
+    engFld("Homologado formal",'<label class="tkchk"><input type="checkbox" id="fnHom"'+(f.homologado?" checked":"")+'> fornecedor homologado</label>')+
     '<div class="row2">'+engFld("Máximo de obras no total",engIn("fnMax",f.max_obras_total,"number",'step="1" min="0" placeholder="ex.: 4"'))+
       engFld("Nota (1 a 5) <small style=\'font-weight:400\'>— usada enquanto não houver avaliações</small>",engIn("fnNota",f.nota,"number",'step="0.1" min="1" max="5"'))+'</div>'+
     engFld("Serviços",'<div class="respbox">'+ENG_SERVICOS.map(function(s){ var on=serv.indexOf(KEY(s))>=0;
@@ -5971,7 +5980,8 @@ function engEditarForn(id){
   engEdAbrir(id?"Editar fornecedor":"Novo fornecedor",html,async function(){
     var emp=engG("fnEmp"); if(!emp) throw new Error("Informe a empresa.");
     var servs=[].slice.call(document.querySelectorAll(".fnServ:checked")).map(function(c){ return c.value; });
-    var dados={empresa:emp, contato:engG("fnCont")||null, telefone:engG("fnTel")||null, obras_executadas:engG("fnExec")||null,
+    var dados={empresa:emp, codigo:engG("fnCod")||null, ramo:engG("fnRamo")||null, homologado:document.getElementById("fnHom").checked,
+      contato:engG("fnCont")||null, telefone:engG("fnTel")||null, obras_executadas:engG("fnExec")||null,
       max_obras_total:engNumOuNulo(engG("fnMax")), nota:engNumOuNulo(engG("fnNota")), observacao:engG("fnObs")||null};
     /* servicos pode ser text[] ou texto, conforme o banco: segue o formato que já existe */
     var exemplo=ENG.d.forn.find(function(x){ return x.servicos!=null; });
@@ -6022,6 +6032,9 @@ function engEditarObra(id,pref){
     '<div class="row2">'+engFld("Fase da obra",engSel("obFase",engFasesObra(),o.fase||"Em orçamento"))+engFld("Padrão",engSel("obPad",["Standard","Plus","Premium"],o.padrao,"— do projeto —"))+'</div>'+
     '<div class="row2">'+engFld("Início da obra",engIn("obIni",dIn(o.data_inicio),"date"))+engFld("Previsão de inauguração",engIn("obPrev",dIn(o.previsao_inauguracao),"date"))+'</div>'+
     '<div class="row2">'+engFld("Área construída (m²)",engIn("obArea",o.area_construida,"number",'min="0"'))+engFld("Valor gasto até agora (R$)",engIn("obGasto",o.valor_gasto,"number",'step="1000" min="0"'))+'</div>'+
+    '<div class="row2">'+engFld("Analista responsável",engIn("obAnal",o.analista))+engFld("Franqueado / contato",engIn("obFqC",o.franqueado_contato))+'</div>'+
+    '<div class="row2">'+engFld("Telefone do franqueado",engIn("obFqT",o.franqueado_telefone))+'<div></div></div>'+
+    engFld("Observações operacionais",'<textarea id="obObsOp">'+engEsc(o.obs_operacional||"")+'</textarea>')+
     '<div class="nvsec">Fornecedores da obra · orçamento por serviço</div>'+
     '<div class="tkwrap"><table class="tktab"><thead><tr><th>Serviço</th><th>Fornecedor</th><th>Valor orçado (R$)</th><th></th><th></th></tr></thead><tbody id="obForns">'+
       vincs.map(linhaF).join("")+'</tbody></table></div>'+
@@ -6038,7 +6051,8 @@ function engEditarObra(id,pref){
     var dados={unidade:unid, projeto_codigo:engG("obProj")||null, cidade:engG("obCid")||null, uf:uf||null,
       regiao:uf?engRegiaoDaUF(uf):(o.regiao||null), fase:engG("obFase")||null, padrao:engG("obPad")||null,
       data_inicio:engG("obIni")||null, previsao_inauguracao:engG("obPrev")||null,
-      area_construida:engNumOuNulo(engG("obArea")), valor_gasto:engNumOuNulo(engG("obGasto"))};
+      area_construida:engNumOuNulo(engG("obArea")), valor_gasto:engNumOuNulo(engG("obGasto")),
+      analista:engG("obAnal")||null, franqueado_contato:engG("obFqC")||null, franqueado_telefone:engG("obFqT")||null, obs_operacional:engG("obObsOp")||null};
     var r=id? await sb.from("eng_obras").update(dados).eq("id",id).select().single()
              : await sb.from("eng_obras").insert(dados).select().single();
     var oid=engOk(r).id;
@@ -6274,3 +6288,5 @@ function engFichaObra(pid){
 </script>
 </body>
 </html>
+
+                                                               
